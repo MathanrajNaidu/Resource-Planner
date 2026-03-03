@@ -114,6 +114,35 @@ th, td {
 }
 th { background:#f0f0f0; }
 
+/* Simple modal for editing records */
+.modal-overlay {
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.4);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:999;
+}
+.modal {
+    background:white;
+    padding:20px;
+    border-radius:6px;
+    min-width:280px;
+    max-width:420px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+}
+.modal h3 {
+    margin-top:0;
+}
+.modal-footer {
+    margin-top:15px;
+    text-align:right;
+}
+
 </style>
 </head>
 
@@ -131,6 +160,8 @@ th { background:#f0f0f0; }
 <div id="dashboard" class="tab active">
     <h2>Yearly Capacity Gantt</h2>
     <button onclick="exportToExcel()">Export to Excel</button>
+    <button onclick="exportToJson()">Export JSON</button>
+    <button onclick="importFromJson()">Import JSON</button>
     <div id="gantt" class="gantt-container"></div>
 </div>
 
@@ -175,6 +206,10 @@ th { background:#f0f0f0; }
         <input type="number" id="allocPercent" placeholder="%">
         <button onclick="addAllocation()">Add</button>
     </div>
+    <div class="section">
+        <h3>Allocation List</h3>
+        <table id="allocationTable"></table>
+    </div>
 </div>
 
 <!-- LEAVE TAB -->
@@ -186,9 +221,152 @@ th { background:#f0f0f0; }
         <input type="date" id="leaveEnd">
         <button onclick="addLeave()">Add Leave</button>
     </div>
+    <div class="section">
+        <h3>Leave List</h3>
+        <table id="leaveTable"></table>
+    </div>
+</div>
+<!-- Generic Edit Modal -->
+<div id="editOverlay" class="modal-overlay">
+    <div class="modal">
+        <h3 id="editTitle"></h3>
+        <div id="editBody"></div>
+        <div class="modal-footer">
+            <button onclick="closeEditModal()">Cancel</button>
+            <button onclick="saveEdit()">Save</button>
+        </div>
+    </div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 <script>
+const DATA_VERSION = 1;
+let db;
+let currentEdit = null; // { type, id }
+
+function normalizeState(input){
+    const s = (input && typeof input === "object") ? input : {};
+    const testers = Array.isArray(s.testers) ? s.testers : [];
+    const projects = Array.isArray(s.projects) ? s.projects : [];
+    const allocations = Array.isArray(s.allocations) ? s.allocations : [];
+    const leaves = Array.isArray(s.leaves) ? s.leaves : [];
+
+    const maxId = (arr)=>arr.reduce((m, x)=>Math.max(m, Number(x && x.id) || 0), 0);
+
+    return {
+        version: Number(s.version) || DATA_VERSION,
+        importedAt: new Date().toISOString(),
+        nextIds: {
+            testers: maxId(testers) + 1,
+            projects: maxId(projects) + 1,
+            allocations: maxId(allocations) + 1,
+            leaves: maxId(leaves) + 1
+        },
+        testers,
+        projects,
+        allocations,
+        leaves
+    };
+}
+
+const request = indexedDB.open("EnterprisePlannerTabsDB",1);
+
+request.onupgradeneeded = e=>{
+    db=e.target.result;
+    if(!db.objectStoreNames.contains("testers"))
+        db.createObjectStore("testers",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("projects"))
+        db.createObjectStore("projects",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("allocations"))
+        db.createObjectStore("allocations",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("leaves"))
+        db.createObjectStore("leaves",{keyPath:"id",autoIncrement:true});
+};
+
+request.onsuccess = e=>{
+    db=e.target.result;
+    refreshAll();
+};
+
+function getAll(store){
+    return new Promise(resolve=>{
+        db.transaction(store)
+          .objectStore(store)
+          .getAll()
+          .onsuccess=e=>{
+              resolve(e.target.result);
+          };
+    });
+}
+
+function downloadTextFile(filename, text, mime="application/json"){
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+}
+
+function exportToJson(){
+    Promise.all([
+        getAll("testers"),
+        getAll("projects"),
+        getAll("allocations"),
+        getAll("leaves")
+    ]).then(([testers, projects, allocations, leaves])=>{
+        const normalized = normalizeState({ testers, projects, allocations, leaves });
+        const payload = JSON.stringify(normalized, null, 2);
+        downloadTextFile("EnterpriseResourcePlannerData.json", payload);
+    });
+}
+
+function importFromJson(){
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.onchange = async ()=>{
+        const file = input.files && input.files[0];
+        if(!file) return;
+        try{
+            const text = await file.text();
+            const obj = JSON.parse(text);
+            const normalized = normalizeState(obj);
+
+            const tx = db.transaction(["testers","projects","allocations","leaves"],"readwrite");
+
+            const testersStore = tx.objectStore("testers");
+            const projectsStore = tx.objectStore("projects");
+            const allocationsStore = tx.objectStore("allocations");
+            const leavesStore = tx.objectStore("leaves");
+
+            testersStore.clear();
+            projectsStore.clear();
+            allocationsStore.clear();
+            leavesStore.clear();
+
+            normalized.testers.forEach(t=>testersStore.add(t));
+            normalized.projects.forEach(p=>projectsStore.add(p));
+            normalized.allocations.forEach(a=>allocationsStore.add(a));
+            normalized.leaves.forEach(l=>leavesStore.add(l));
+
+            tx.oncomplete = ()=>{
+                refreshAll();
+            };
+            tx.onerror = e=>{
+                console.error("Import transaction failed", e);
+                alert("Failed to import JSON into database.");
+            };
+        }catch(err){
+            console.error(err);
+            alert("Invalid JSON file.");
+        }
+    };
+    input.click();
+}
+
 async function exportToExcel(){
 
     const testers=await getAll("testers");
@@ -259,7 +437,6 @@ async function exportToExcel(){
     XLSX.writeFile(wb, `Capacity_${YEAR}.xlsx`);
 }
 
-let db;
 const YEAR = new Date().getFullYear();
 
 function showTab(id, btn){
@@ -269,31 +446,16 @@ function showTab(id, btn){
     btn.classList.add("active");
 }
 
-const request = indexedDB.open("EnterprisePlannerTabsDB",1);
+function openEditModal(title, bodyHtml){
+    currentEdit = currentEdit || {};
+    document.getElementById("editTitle").innerText = title;
+    document.getElementById("editBody").innerHTML = bodyHtml;
+    document.getElementById("editOverlay").style.display = "flex";
+}
 
-request.onupgradeneeded = e=>{
-    db=e.target.result;
-    if(!db.objectStoreNames.contains("testers"))
-        db.createObjectStore("testers",{keyPath:"id",autoIncrement:true});
-    if(!db.objectStoreNames.contains("projects"))
-        db.createObjectStore("projects",{keyPath:"id",autoIncrement:true});
-    if(!db.objectStoreNames.contains("allocations"))
-        db.createObjectStore("allocations",{keyPath:"id",autoIncrement:true});
-    if(!db.objectStoreNames.contains("leaves"))
-        db.createObjectStore("leaves",{keyPath:"id",autoIncrement:true});
-};
-
-request.onsuccess = e=>{
-    db=e.target.result;
-    refreshAll();
-};
-
-function getAll(store){
-    return new Promise(resolve=>{
-        db.transaction(store).objectStore(store).getAll().onsuccess=e=>{
-            resolve(e.target.result);
-        };
-    });
+function closeEditModal(){
+    document.getElementById("editOverlay").style.display = "none";
+    currentEdit = null;
 }
 
 async function refreshAll(){
@@ -302,8 +464,12 @@ async function refreshAll(){
 }
 
 async function refreshDropdowns(){
-    const testers = await getAll("testers");
-    const projects = await getAll("projects");
+    const [testers, projects, allocations, leaves] = await Promise.all([
+        getAll("testers"),
+        getAll("projects"),
+        getAll("allocations"),
+        getAll("leaves")
+    ]);
 
     // Dropdowns
     const allocTester=document.getElementById("allocTester");
@@ -324,26 +490,272 @@ async function refreshDropdowns(){
 
     // Tester table
     const testerTable=document.getElementById("testerTable");
-    testerTable.innerHTML="<tr><th>Name</th></tr>";
+    testerTable.innerHTML="<tr><th>Name</th><th>Edit</th><th>Delete</th></tr>";
     testers.forEach(t=>{
-        testerTable.innerHTML+=`<tr><td>${t.name}</td></tr>`;
+        testerTable.innerHTML+=`<tr>
+            <td>${t.name}</td>
+            <td><button onclick="editTester(${t.id})">Edit</button></td>
+            <td><button onclick="deleteTester(${t.id})">Delete</button></td>
+        </tr>`;
     });
 
     // Project table
     const projectTable=document.getElementById("projectTable");
-    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th></tr>";
+    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th><th>Edit</th><th>Delete</th></tr>";
     projects.forEach(p=>{
-        projectTable.innerHTML+=`<tr><td>${p.name}</td><td>${p.priority}</td></tr>`;
+        projectTable.innerHTML+=`<tr>
+            <td>${p.name}</td>
+            <td>${p.priority}</td>
+            <td><button onclick="editProject(${p.id})">Edit</button></td>
+            <td><button onclick="deleteProject(${p.id})">Delete</button></td>
+        </tr>`;
     });
+
+    // Allocation table
+    const allocationTable = document.getElementById("allocationTable");
+    allocationTable.innerHTML = "<tr><th>Tester</th><th>Project</th><th>Start</th><th>End</th><th>%</th><th>Edit</th><th>Delete</th></tr>";
+    allocations.forEach(a => {
+        const tester = testers.find(t => t.id === a.testerId);
+        const project = projects.find(p => p.id === a.projectId);
+        const testerName = tester ? tester.name : "";
+        const projectName = project ? project.name : "";
+        allocationTable.innerHTML += `<tr>
+            <td>${testerName}</td>
+            <td>${projectName}</td>
+            <td>${a.start}</td>
+            <td>${a.end}</td>
+            <td>${a.percent}</td>
+            <td><button onclick="editAllocation(${a.id})">Edit</button></td>
+            <td><button onclick="deleteAllocation(${a.id})">Delete</button></td>
+        </tr>`;
+    });
+
+    // Leave table
+    const leaveTable = document.getElementById("leaveTable");
+    leaveTable.innerHTML = "<tr><th>Tester</th><th>Start</th><th>End</th><th>Edit</th><th>Delete</th></tr>";
+    leaves.forEach(l => {
+        const tester = testers.find(t => t.id === l.testerId);
+        const testerName = tester ? tester.name : "";
+        leaveTable.innerHTML += `<tr>
+            <td>${testerName}</td>
+            <td>${l.start}</td>
+            <td>${l.end}</td>
+            <td><button onclick="editLeave(${l.id})">Edit</button></td>
+            <td><button onclick="deleteLeave(${l.id})">Delete</button></td>
+        </tr>`;
+    });
+}
+
+async function deleteTester(id){
+    if(!confirm("Delete this tester and all related allocations/leaves?")) return;
+    const [allocations, leaves] = await Promise.all([
+        getAll("allocations"),
+        getAll("leaves")
+    ]);
+    const tx = db.transaction(["testers","allocations","leaves"],"readwrite");
+    tx.objectStore("testers").delete(id);
+    const allocStore = tx.objectStore("allocations");
+    allocations.filter(a=>a.testerId===id).forEach(a=>allocStore.delete(a.id));
+    const leaveStore = tx.objectStore("leaves");
+    leaves.filter(l=>l.testerId===id).forEach(l=>leaveStore.delete(l.id));
+    tx.oncomplete = ()=>{ refreshAll(); };
+}
+
+async function deleteProject(id){
+    if(!confirm("Delete this project and all related allocations?")) return;
+    const allocations = await getAll("allocations");
+    const tx = db.transaction(["projects","allocations"],"readwrite");
+    tx.objectStore("projects").delete(id);
+    const allocStore = tx.objectStore("allocations");
+    allocations.filter(a=>a.projectId===id).forEach(a=>allocStore.delete(a.id));
+    tx.oncomplete = ()=>{ refreshAll(); };
+}
+
+function deleteAllocation(id){
+    if(!confirm("Delete this allocation?")) return;
+    const tx = db.transaction("allocations","readwrite");
+    tx.objectStore("allocations").delete(id);
+    tx.oncomplete = ()=>{ refreshAll(); };
+}
+
+function deleteLeave(id){
+    if(!confirm("Delete this leave entry?")) return;
+    const tx = db.transaction("leaves","readwrite");
+    tx.objectStore("leaves").delete(id);
+    tx.oncomplete = ()=>{ refreshAll(); };
+}
+
+async function editTester(id){
+    const testers = await getAll("testers");
+    const tester = testers.find(t => t.id === id);
+    if(!tester) return;
+    const name = prompt("Edit tester name:", tester.name);
+    if(name === null) return;
+    const trimmed = name.trim();
+    if(!trimmed) return alert("Name cannot be empty.");
+    const tx = db.transaction("testers","readwrite");
+    tx.objectStore("testers").put({ id, name: trimmed });
+    tx.oncomplete = ()=>{ refreshAll(); };
+}
+
+async function editProject(id){
+    const projects = await getAll("projects");
+    const project = projects.find(p => p.id === id);
+    if(!project) return;
+    currentEdit = { type:"project", id };
+    const bodyHtml = `
+        <label>
+            Name<br>
+            <input id="editProjectName" value="${project.name || ""}">
+        </label><br>
+        <label>
+            Priority<br>
+            <select id="editProjectPriority">
+                <option value="P1"${project.priority==="P1"?" selected":""}>P1</option>
+                <option value="P2"${project.priority==="P2"?" selected":""}>P2</option>
+                <option value="P3"${project.priority==="P3"?" selected":""}>P3</option>
+            </select>
+        </label><br>
+        <label>
+            Color<br>
+            <input type="color" id="editProjectColor" value="${project.color || "#0984e3"}">
+        </label>
+    `;
+    openEditModal("Edit Project", bodyHtml);
+}
+
+async function editAllocation(id){
+    const [allocations, testers, projects] = await Promise.all([
+        getAll("allocations"),
+        getAll("testers"),
+        getAll("projects")
+    ]);
+    const allocation = allocations.find(a => a.id === id);
+    if(!allocation) return;
+
+    currentEdit = { type:"allocation", id };
+
+    const testerOptions = testers.map(t =>
+        `<option value="${t.id}"${t.id===allocation.testerId?" selected":""}>${t.name}</option>`
+    ).join("");
+    const projectOptions = projects.map(p =>
+        `<option value="${p.id}"${p.id===allocation.projectId?" selected":""}>${p.name} (${p.priority})</option>`
+    ).join("");
+
+    const bodyHtml = `
+        <label>
+            Tester<br>
+            <select id="editAllocTester">${testerOptions}</select>
+        </label><br>
+        <label>
+            Project<br>
+            <select id="editAllocProject">${projectOptions}</select>
+        </label><br>
+        <label>
+            Start date<br>
+            <input type="date" id="editAllocStart" value="${allocation.start}">
+        </label><br>
+        <label>
+            End date<br>
+            <input type="date" id="editAllocEnd" value="${allocation.end}">
+        </label><br>
+        <label>
+            Percent<br>
+            <input type="number" id="editAllocPercent" value="${allocation.percent}">
+        </label>
+    `;
+    openEditModal("Edit Allocation", bodyHtml);
+}
+
+async function editLeave(id){
+    const [leaves, testers] = await Promise.all([
+        getAll("leaves"),
+        getAll("testers")
+    ]);
+    const leave = leaves.find(l => l.id === id);
+    if(!leave) return;
+
+    currentEdit = { type:"leave", id };
+
+    const testerOptions = testers.map(t =>
+        `<option value="${t.id}"${t.id===leave.testerId?" selected":""}>${t.name}</option>`
+    ).join("");
+
+    const bodyHtml = `
+        <label>
+            Tester<br>
+            <select id="editLeaveTester">${testerOptions}</select>
+        </label><br>
+        <label>
+            Start date<br>
+            <input type="date" id="editLeaveStart" value="${leave.start}">
+        </label><br>
+        <label>
+            End date<br>
+            <input type="date" id="editLeaveEnd" value="${leave.end}">
+        </label>
+    `;
+    openEditModal("Edit Leave", bodyHtml);
+}
+
+function saveEdit(){
+    if(!currentEdit) return;
+    if(currentEdit.type === "project"){
+        const name = document.getElementById("editProjectName").value.trim();
+        const priority = document.getElementById("editProjectPriority").value;
+        const color = document.getElementById("editProjectColor").value || "#0984e3";
+        if(!name) return alert("Project name cannot be empty.");
+        const tx = db.transaction("projects","readwrite");
+        tx.objectStore("projects").put({
+            id: currentEdit.id,
+            name,
+            priority,
+            color
+        });
+        tx.oncomplete = ()=>{ closeEditModal(); refreshAll(); };
+    } else if(currentEdit.type === "allocation"){
+        const testerId = Number(document.getElementById("editAllocTester").value);
+        const projectId = Number(document.getElementById("editAllocProject").value);
+        const start = document.getElementById("editAllocStart").value;
+        const end = document.getElementById("editAllocEnd").value;
+        const percent = Number(document.getElementById("editAllocPercent").value);
+        if(!testerId || !projectId || !start || !end || !percent || isNaN(percent)){
+            return alert("Please fill all allocation fields with valid values.");
+        }
+        const tx = db.transaction("allocations","readwrite");
+        tx.objectStore("allocations").put({
+            id: currentEdit.id,
+            testerId,
+            projectId,
+            start,
+            end,
+            percent
+        });
+        tx.oncomplete = ()=>{ closeEditModal(); refreshAll(); };
+    } else if(currentEdit.type === "leave"){
+        const testerId = Number(document.getElementById("editLeaveTester").value);
+        const start = document.getElementById("editLeaveStart").value;
+        const end = document.getElementById("editLeaveEnd").value;
+        if(!testerId || !start || !end){
+            return alert("Please fill all leave fields.");
+        }
+        const tx = db.transaction("leaves","readwrite");
+        tx.objectStore("leaves").put({
+            id: currentEdit.id,
+            testerId,
+            start,
+            end
+        });
+        tx.oncomplete = ()=>{ closeEditModal(); refreshAll(); };
+    }
 }
 
 function addTester(){
     const name=document.getElementById("testerName").value.trim();
     if(!name) return alert("Enter tester name");
-
-    db.transaction("testers","readwrite")
-      .objectStore("testers")
-      .add({name:name})
+    const tx = db.transaction("testers","readwrite");
+    tx.objectStore("testers")
+      .add({ name })
       .onsuccess=()=>{
           document.getElementById("testerName").value="";
           refreshAll();
@@ -356,10 +768,9 @@ function addProject(){
     const color=document.getElementById("projectColor").value;
 
     if(!name) return alert("Enter project name");
-
-    db.transaction("projects","readwrite")
-      .objectStore("projects")
-      .add({name,priority,color})
+    const tx = db.transaction("projects","readwrite");
+    tx.objectStore("projects")
+      .add({ name, priority, color })
       .onsuccess=()=>{
           document.getElementById("projectName").value="";
           refreshAll();
@@ -374,10 +785,9 @@ function addAllocation(){
     const percent=Number(document.getElementById("allocPercent").value);
 
     if(!start || !end || !percent) return alert("Fill all allocation fields");
-
-    db.transaction("allocations","readwrite")
-      .objectStore("allocations")
-      .add({testerId,projectId,start,end,percent})
+    const tx = db.transaction("allocations","readwrite");
+    tx.objectStore("allocations")
+      .add({ testerId, projectId, start, end, percent })
       .onsuccess=()=>{
           refreshAll();
       };
@@ -389,10 +799,9 @@ function addLeave(){
     const end=document.getElementById("leaveEnd").value;
 
     if(!start || !end) return alert("Select leave dates");
-
-    db.transaction("leaves","readwrite")
-      .objectStore("leaves")
-      .add({testerId,start,end})
+    const tx = db.transaction("leaves","readwrite");
+    tx.objectStore("leaves")
+      .add({ testerId, start, end })
       .onsuccess=()=>{
           refreshAll();
       };
@@ -478,6 +887,8 @@ async function renderGantt(){
         container.appendChild(row);
     });
 }
+
+// DB open will trigger initial refresh via request.onsuccess
 </script>
 </body>
 </html>
