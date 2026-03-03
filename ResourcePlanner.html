@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Enterprise Resource Planner</title>
+
+<style>
+body { font-family: Arial; margin:0; background:#f4f6f9; }
+
+.navbar {
+    display:flex;
+    background:#2c3e50;
+}
+.navbar button {
+    flex:1;
+    padding:12px;
+    background:none;
+    border:none;
+    color:white;
+    cursor:pointer;
+    font-weight:bold;
+}
+.navbar button.active {
+    background:#34495e;
+}
+
+.tab {
+    display:none;
+    padding:20px;
+}
+.tab.active {
+    display:block;
+}
+
+.section {
+    background:white;
+    padding:15px;
+    margin-bottom:20px;
+    border-radius:6px;
+    box-shadow:0 2px 5px rgba(0,0,0,0.08);
+}
+
+input, select, button {
+    padding:6px;
+    margin:4px;
+}
+
+.gantt-container {
+    overflow:auto;
+    border:1px solid #ccc;
+    background:white;
+}
+
+.gantt-header, .gantt-row {
+    display:flex;
+}
+
+.tester-label {
+    width:150px;
+    min-width:150px;
+    padding:6px;
+    border-right:1px solid #ccc;
+    background:#fafafa;
+    font-weight:bold;
+    position:sticky;
+    left:0;
+    z-index:2;
+}
+
+.week-cell {
+    width:90px;
+    min-width:90px;
+    height:70px;
+    border-right:1px solid #eee;
+    border-bottom:1px solid #eee;
+    font-size:9px;
+    padding:2px;
+    overflow:hidden;
+}
+
+.week-header {
+    background:#ecf0f1;
+    text-align:center;
+    font-size:9px;
+}
+
+.project-box {
+    padding:1px;
+    border-radius:3px;
+    font-size:8px;
+    color:white;
+    margin-bottom:2px;
+}
+
+.leave-box {
+    background:#636e72;
+    color:white;
+    text-align:center;
+    border-radius:3px;
+    font-size:8px;
+    margin-bottom:2px;
+}
+
+.over { border:2px solid red; }
+
+table {
+    width:100%;
+    border-collapse:collapse;
+}
+th, td {
+    border:1px solid #ddd;
+    padding:6px;
+    font-size:12px;
+}
+th { background:#f0f0f0; }
+
+</style>
+</head>
+
+<body>
+
+<div class="navbar">
+    <button class="active" onclick="showTab('dashboard', this)">Yearly Capacity</button>
+    <button onclick="showTab('testers', this)">Testers</button>
+    <button onclick="showTab('projects', this)">Projects</button>
+    <button onclick="showTab('allocations', this)">Allocations</button>
+    <button onclick="showTab('leave', this)">Leave</button>
+</div>
+
+<!-- DASHBOARD TAB -->
+<div id="dashboard" class="tab active">
+    <h2>Yearly Capacity Gantt</h2>
+    <button onclick="exportToExcel()">Export to Excel</button>
+    <div id="gantt" class="gantt-container"></div>
+</div>
+
+<!-- TESTERS TAB -->
+<div id="testers" class="tab">
+    <div class="section">
+        <h3>Add Tester</h3>
+        <input id="testerName" placeholder="Tester Name">
+        <button onclick="addTester()">Add</button>
+    </div>
+    <div class="section">
+        <h3>Tester List</h3>
+        <table id="testerTable"></table>
+    </div>
+</div>
+
+<!-- PROJECTS TAB -->
+<div id="projects" class="tab">
+    <div class="section">
+        <h3>Add Project</h3>
+        <input id="projectName" placeholder="Project Name">
+        <select id="priority">
+            <option>P1</option><option>P2</option><option>P3</option>
+        </select>
+        <input type="color" id="projectColor" value="#0984e3">
+        <button onclick="addProject()">Add</button>
+    </div>
+    <div class="section">
+        <h3>Project List</h3>
+        <table id="projectTable"></table>
+    </div>
+</div>
+
+<!-- ALLOCATIONS TAB -->
+<div id="allocations" class="tab">
+    <div class="section">
+        <h3>Add Allocation</h3>
+        <select id="allocTester"></select>
+        <select id="allocProject"></select>
+        <input type="date" id="allocStart">
+        <input type="date" id="allocEnd">
+        <input type="number" id="allocPercent" placeholder="%">
+        <button onclick="addAllocation()">Add</button>
+    </div>
+</div>
+
+<!-- LEAVE TAB -->
+<div id="leave" class="tab">
+    <div class="section">
+        <h3>Add Leave</h3>
+        <select id="leaveTester"></select>
+        <input type="date" id="leaveStart">
+        <input type="date" id="leaveEnd">
+        <button onclick="addLeave()">Add Leave</button>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script>
+async function exportToExcel(){
+
+    const testers=await getAll("testers");
+    const projects=await getAll("projects");
+    const allocations=await getAll("allocations");
+    const leaves=await getAll("leaves");
+
+    const startOfYear=new Date(YEAR,0,1);
+
+    let data=[];
+
+    // Header row
+    let header=["Tester"];
+    for(let w=0; w<52; w++){
+        const weekStart=new Date(startOfYear);
+        weekStart.setDate(startOfYear.getDate()+w*7);
+        header.push(
+            `W${w+1} (${weekStart.toLocaleDateString()})`
+        );
+    }
+    data.push(header);
+
+    // Rows
+    testers.forEach(tester=>{
+        let row=[tester.name];
+
+        for(let w=0; w<52; w++){
+            const weekStart=new Date(startOfYear);
+            weekStart.setDate(startOfYear.getDate()+w*7);
+            const weekEnd=new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate()+6);
+
+            let cellText="";
+            let total=0;
+
+            // Leaves
+            leaves.filter(l=>l.testerId===tester.id)
+                  .forEach(l=>{
+                if(new Date(l.start)<=weekEnd && new Date(l.end)>=weekStart){
+                    cellText+="LEAVE ";
+                }
+            });
+
+            // Allocations
+            allocations.filter(a=>a.testerId===tester.id)
+                       .forEach(a=>{
+                if(new Date(a.start)<=weekEnd && new Date(a.end)>=weekStart){
+                    total+=a.percent;
+                    const proj=projects.find(p=>p.id===a.projectId);
+                    if(proj){
+                        cellText+=`${proj.name} (${a.percent}%) `;
+                    }
+                }
+            });
+
+            if(total>100) cellText+="[OVER]";
+
+            row.push(cellText.trim());
+        }
+
+        data.push(row);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Yearly Capacity");
+
+    XLSX.writeFile(wb, `Capacity_${YEAR}.xlsx`);
+}
+
+let db;
+const YEAR = new Date().getFullYear();
+
+function showTab(id, btn){
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.querySelectorAll(".navbar button").forEach(b=>b.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    btn.classList.add("active");
+}
+
+const request = indexedDB.open("EnterprisePlannerTabsDB",1);
+
+request.onupgradeneeded = e=>{
+    db=e.target.result;
+    if(!db.objectStoreNames.contains("testers"))
+        db.createObjectStore("testers",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("projects"))
+        db.createObjectStore("projects",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("allocations"))
+        db.createObjectStore("allocations",{keyPath:"id",autoIncrement:true});
+    if(!db.objectStoreNames.contains("leaves"))
+        db.createObjectStore("leaves",{keyPath:"id",autoIncrement:true});
+};
+
+request.onsuccess = e=>{
+    db=e.target.result;
+    refreshAll();
+};
+
+function getAll(store){
+    return new Promise(resolve=>{
+        db.transaction(store).objectStore(store).getAll().onsuccess=e=>{
+            resolve(e.target.result);
+        };
+    });
+}
+
+async function refreshAll(){
+    await refreshDropdowns();
+    await renderGantt();
+}
+
+async function refreshDropdowns(){
+    const testers = await getAll("testers");
+    const projects = await getAll("projects");
+
+    // Dropdowns
+    const allocTester=document.getElementById("allocTester");
+    const leaveTester=document.getElementById("leaveTester");
+    const allocProject=document.getElementById("allocProject");
+
+    allocTester.innerHTML="";
+    leaveTester.innerHTML="";
+    testers.forEach(t=>{
+        allocTester.innerHTML+=`<option value="${t.id}">${t.name}</option>`;
+        leaveTester.innerHTML+=`<option value="${t.id}">${t.name}</option>`;
+    });
+
+    allocProject.innerHTML="";
+    projects.forEach(p=>{
+        allocProject.innerHTML+=`<option value="${p.id}">${p.name} (${p.priority})</option>`;
+    });
+
+    // Tester table
+    const testerTable=document.getElementById("testerTable");
+    testerTable.innerHTML="<tr><th>Name</th></tr>";
+    testers.forEach(t=>{
+        testerTable.innerHTML+=`<tr><td>${t.name}</td></tr>`;
+    });
+
+    // Project table
+    const projectTable=document.getElementById("projectTable");
+    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th></tr>";
+    projects.forEach(p=>{
+        projectTable.innerHTML+=`<tr><td>${p.name}</td><td>${p.priority}</td></tr>`;
+    });
+}
+
+function addTester(){
+    const name=document.getElementById("testerName").value.trim();
+    if(!name) return alert("Enter tester name");
+
+    db.transaction("testers","readwrite")
+      .objectStore("testers")
+      .add({name:name})
+      .onsuccess=()=>{
+          document.getElementById("testerName").value="";
+          refreshAll();
+      };
+}
+
+function addProject(){
+    const name=document.getElementById("projectName").value.trim();
+    const priority=document.getElementById("priority").value;
+    const color=document.getElementById("projectColor").value;
+
+    if(!name) return alert("Enter project name");
+
+    db.transaction("projects","readwrite")
+      .objectStore("projects")
+      .add({name,priority,color})
+      .onsuccess=()=>{
+          document.getElementById("projectName").value="";
+          refreshAll();
+      };
+}
+
+function addAllocation(){
+    const testerId=Number(document.getElementById("allocTester").value);
+    const projectId=Number(document.getElementById("allocProject").value);
+    const start=document.getElementById("allocStart").value;
+    const end=document.getElementById("allocEnd").value;
+    const percent=Number(document.getElementById("allocPercent").value);
+
+    if(!start || !end || !percent) return alert("Fill all allocation fields");
+
+    db.transaction("allocations","readwrite")
+      .objectStore("allocations")
+      .add({testerId,projectId,start,end,percent})
+      .onsuccess=()=>{
+          refreshAll();
+      };
+}
+
+function addLeave(){
+    const testerId=Number(document.getElementById("leaveTester").value);
+    const start=document.getElementById("leaveStart").value;
+    const end=document.getElementById("leaveEnd").value;
+
+    if(!start || !end) return alert("Select leave dates");
+
+    db.transaction("leaves","readwrite")
+      .objectStore("leaves")
+      .add({testerId,start,end})
+      .onsuccess=()=>{
+          refreshAll();
+      };
+}
+
+async function renderGantt(){
+    const container=document.getElementById("gantt");
+    container.innerHTML="";
+
+    const testers=await getAll("testers");
+    const projects=await getAll("projects");
+    const allocations=await getAll("allocations");
+    const leaves=await getAll("leaves");
+
+    const startOfYear=new Date(YEAR,0,1);
+
+    const header=document.createElement("div");
+    header.className="gantt-header";
+
+    const empty=document.createElement("div");
+    empty.className="tester-label";
+    header.appendChild(empty);
+
+    for(let w=0; w<52; w++){
+        const weekStart=new Date(startOfYear);
+        weekStart.setDate(startOfYear.getDate()+w*7);
+        const weekEnd=new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate()+6);
+
+        const cell=document.createElement("div");
+        cell.className="week-cell week-header";
+        cell.innerHTML=`W${w+1}<br>${weekStart.toLocaleDateString()}<br>${weekEnd.toLocaleDateString()}`;
+        header.appendChild(cell);
+    }
+
+    container.appendChild(header);
+
+    testers.forEach(tester=>{
+        const row=document.createElement("div");
+        row.className="gantt-row";
+
+        const label=document.createElement("div");
+        label.className="tester-label";
+        label.innerText=tester.name;
+        row.appendChild(label);
+
+        for(let w=0; w<52; w++){
+            const weekStart=new Date(startOfYear);
+            weekStart.setDate(startOfYear.getDate()+w*7);
+            const weekEnd=new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate()+6);
+
+            const cell=document.createElement("div");
+            cell.className="week-cell";
+            let total=0;
+
+            leaves.filter(l=>l.testerId===tester.id)
+                  .forEach(l=>{
+                if(new Date(l.start)<=weekEnd && new Date(l.end)>=weekStart){
+                    cell.innerHTML+=`<div class="leave-box">LEAVE</div>`;
+                }
+            });
+
+            allocations.filter(a=>a.testerId===tester.id)
+                       .forEach(a=>{
+                if(new Date(a.start)<=weekEnd && new Date(a.end)>=weekStart){
+                    total+=a.percent;
+                    const proj=projects.find(p=>p.id===a.projectId);
+                    if(proj){
+                        cell.innerHTML+=`
+                        <div class="project-box" style="background:${proj.color}">
+                            ${proj.name} (${a.percent}%)
+                        </div>`;
+                    }
+                }
+            });
+
+            if(total>100) cell.classList.add("over");
+
+            row.appendChild(cell);
+        }
+
+        container.appendChild(row);
+    });
+}
+</script>
+</body>
+</html>
