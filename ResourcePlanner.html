@@ -5,148 +5,410 @@
 <title>Enterprise Resource Planner</title>
 
 <style>
-body { font-family: Arial; margin:0; background:#f4f6f9; }
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(circle at top left, #ffffff 0%, #e4ecf7 40%, #f4f6f9 100%);
+    color: #2c3e50;
+    line-height: 1.5;
+}
+
+.app-header {
+    padding: 18px 24px 12px;
+    background: linear-gradient(135deg, #1f2933, #111827);
+    color: #e5edff;
+    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
 
 .navbar {
-    display:flex;
-    background:#2c3e50;
+    display: flex;
+    background: #1f2933;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+    position: sticky;
+    top: 0;
+    z-index: 50;
 }
 .navbar button {
-    flex:1;
-    padding:12px;
-    background:none;
-    border:none;
-    color:white;
-    cursor:pointer;
-    font-weight:bold;
+    flex: 1;
+    padding: 14px 18px;
+    background: transparent;
+    border: none;
+    color: #cbd5f5;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.navbar button:hover {
+    background: rgba(148, 163, 184, 0.22);
+    color: #e5edff;
 }
 .navbar button.active {
-    background:#34495e;
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #f9fafb;
+    box-shadow: inset 0 -2px 0 rgba(15, 23, 42, 0.45);
 }
 
 .tab {
-    display:none;
-    padding:20px;
+    display: none;
+    padding: 24px;
+    max-width: 1200px;
+    margin: 0 auto 32px auto;
 }
 .tab.active {
-    display:block;
+    display: block;
+}
+
+h2 {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: #111827;
+}
+
+h3 {
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #111827;
 }
 
 .section {
-    background:white;
-    padding:15px;
-    margin-bottom:20px;
-    border-radius:6px;
-    box-shadow:0 2px 5px rgba(0,0,0,0.08);
+    background: #ffffff;
+    padding: 18px 20px 14px;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+    border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
-input, select, button {
-    padding:6px;
-    margin:4px;
+.section h3 {
+    margin-bottom: 14px;
+}
+
+label {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 3px;
+    margin: 0 16px 10px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #4b5563;
+}
+
+input,
+select {
+    padding: 8px 10px;
+    min-width: 180px;
+    font-size: 13px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    box-sizing: border-box;
+    background: #f9fafb;
+    color: #111827;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.08s ease;
+}
+
+input::placeholder {
+    color: #9ca3af;
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: #2563eb;
+    background: #ffffff;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
+    transform: translateY(-0.5px);
+}
+
+select {
+    min-width: 130px;
+    padding-right: 26px;
+    appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%), linear-gradient(135deg, #6b7280 50%, transparent 50%);
+    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+input[type="color"] {
+    padding: 0;
+    height: 28px;
+    width: 42px;
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid #cbd5e1;
+    background: #f9fafb;
+}
+
+input[type="date"] {
+    min-width: 160px;
+}
+
+input[type="number"] {
+    max-width: 120px;
+}
+
+button {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff;
+    border: none;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    padding: 9px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.32);
+    opacity: 0.96;
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 12px rgba(30, 64, 175, 0.4);
+}
+
+button:disabled {
+    cursor: default;
+    opacity: 0.55;
+    box-shadow: none;
 }
 
 .gantt-container {
-    overflow:auto;
-    border:1px solid #ccc;
-    background:white;
+    overflow: auto;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
+    margin-top: 16px;
 }
 
-.gantt-header, .gantt-row {
-    display:flex;
+.gantt-header,
+.gantt-row {
+    display: flex;
+}
+
+.gantt-month-strip {
+    display: flex;
+    background: linear-gradient(180deg, #e5e7eb 0%, #dbeafe 100%);
+    border-bottom: 1px solid #e5e7eb;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+}
+
+.month-cell {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #111827;
+    border-right: 1px solid #e5e7eb;
+    padding: 4px 2px;
 }
 
 .tester-label {
-    width:150px;
-    min-width:150px;
-    padding:6px;
-    border-right:1px solid #ccc;
-    background:#fafafa;
-    font-weight:bold;
-    position:sticky;
-    left:0;
-    z-index:2;
+    width: 170px;
+    min-width: 170px;
+    padding: 10px 8px;
+    border-right: 1px solid #e5e7eb;
+    background: linear-gradient(180deg, #f9fafb 0%, #eef2ff 100%);
+    font-weight: 600;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    font-size: 12px;
 }
 
 .week-cell {
-    width:90px;
-    min-width:90px;
-    height:70px;
-    border-right:1px solid #eee;
-    border-bottom:1px solid #eee;
-    font-size:9px;
-    padding:2px;
-    overflow:hidden;
+    width: 100px;
+    min-width: 100px;
+    height: 76px;
+    border-right: 1px solid #e5e7eb;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 10px;
+    padding: 3px 4px;
+    overflow: hidden;
+    background: #ffffff;
 }
 
 .week-header {
-    background:#ecf0f1;
-    text-align:center;
-    font-size:9px;
+    background: linear-gradient(180deg, #e5e7eb 0%, #e0f2fe 100%);
+    text-align: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #111827;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 4px 2px;
+    height: 46px;
+}
+
+.week-week {
+    font-size: 9px;
+    font-weight: 700;
+}
+
+.week-days {
+    font-size: 9px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .project-box {
-    padding:1px;
-    border-radius:3px;
-    font-size:8px;
-    color:white;
-    margin-bottom:2px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: 9px;
+    color: #ffffff;
+    margin-bottom: 3px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
 }
 
 .leave-box {
-    background:#636e72;
-    color:white;
-    text-align:center;
-    border-radius:3px;
-    font-size:8px;
-    margin-bottom:2px;
+    background: linear-gradient(135deg, #6b7280, #4b5563);
+    color: #ffffff;
+    text-align: center;
+    border-radius: 4px;
+    font-size: 9px;
+    margin-bottom: 3px;
+    padding: 2px 4px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
 }
 
-.over { border:2px solid red; }
+.over {
+    box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.85);
+    background-image: repeating-linear-gradient(
+        135deg,
+        rgba(248, 113, 113, 0.08),
+        rgba(248, 113, 113, 0.08) 6px,
+        transparent 6px,
+        transparent 12px
+    );
+}
 
 table {
-    width:100%;
-    border-collapse:collapse;
+    width: 100%;
+    border-collapse: collapse;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #ffffff;
 }
-th, td {
-    border:1px solid #ddd;
-    padding:6px;
-    font-size:12px;
+
+th,
+td {
+    border: 1px solid #e5e7eb;
+    padding: 8px 10px;
+    font-size: 13px;
 }
-th { background:#f0f0f0; }
+
+th {
+    background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
+    text-align: left;
+    font-weight: 600;
+    color: #111827;
+}
+
+tbody tr:nth-child(even) {
+    background: #f9fafb;
+}
+
+tbody tr:hover {
+    background: #eff6ff;
+}
 
 /* Simple modal for editing records */
 .modal-overlay {
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    background:rgba(0,0,0,0.4);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:999;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    backdrop-filter: blur(3px);
 }
 .modal {
-    background:white;
-    padding:20px;
-    border-radius:6px;
-    min-width:280px;
-    max-width:420px;
-    box-shadow:0 2px 6px rgba(0,0,0,0.2);
+    background: #ffffff;
+    padding: 22px 22px 18px;
+    border-radius: 12px;
+    min-width: 280px;
+    max-width: 480px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
 }
 .modal h3 {
-    margin-top:0;
+    margin-top: 0;
+    margin-bottom: 14px;
 }
 .modal-footer {
-    margin-top:15px;
-    text-align:right;
+    margin-top: 18px;
+    text-align: right;
 }
 
+.modal label {
+    width: 100%;
+    margin-right: 0;
+}
+
+.modal input,
+.modal select {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .tab {
+        padding: 16px;
+    }
+
+    .tester-label {
+        width: 130px;
+        min-width: 130px;
+    }
+
+    .week-cell {
+        width: 80px;
+        min-width: 80px;
+    }
+}
 </style>
 </head>
 
 <body>
+
+<div class="app-header">
+    <h1>Resource Planner</h1>
+</div>
 
 <div class="navbar">
     <button class="active" onclick="showTab('dashboard', this)">Yearly Capacity</button>
@@ -375,37 +637,47 @@ async function exportToExcel(){
     const leaves=await getAll("leaves");
 
     const startOfYear=new Date(YEAR,0,1);
+    const endOfYear = new Date(YEAR,11,31);
+
+    // Build the same weeks array used conceptually in the Gantt
+    const weeks = [];
+    let w = 0;
+    while (true) {
+        const weekStart = new Date(startOfYear);
+        weekStart.setDate(startOfYear.getDate() + w*7);
+        if (weekStart > endOfYear) break;
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        if (weekEnd > endOfYear) weekEnd.setTime(endOfYear.getTime());
+
+        weeks.push({ weekStart, weekEnd });
+        w++;
+    }
 
     let data=[];
 
     // Header row
     let header=["Tester"];
-    for(let w=0; w<52; w++){
-        const weekStart=new Date(startOfYear);
-        weekStart.setDate(startOfYear.getDate()+w*7);
+    weeks.forEach((wk, index) => {
         header.push(
-            `W${w+1} (${weekStart.toLocaleDateString()})`
+            `W${index+1} (${wk.weekStart.toLocaleDateString()} - ${wk.weekEnd.toLocaleDateString()})`
         );
-    }
+    });
     data.push(header);
 
     // Rows
     testers.forEach(tester=>{
         let row=[tester.name];
 
-        for(let w=0; w<52; w++){
-            const weekStart=new Date(startOfYear);
-            weekStart.setDate(startOfYear.getDate()+w*7);
-            const weekEnd=new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate()+6);
-
+        weeks.forEach(wk => {
             let cellText="";
             let total=0;
 
             // Leaves
             leaves.filter(l=>l.testerId===tester.id)
                   .forEach(l=>{
-                if(new Date(l.start)<=weekEnd && new Date(l.end)>=weekStart){
+                if(new Date(l.start)<=wk.weekEnd && new Date(l.end)>=wk.weekStart){
                     cellText+="LEAVE ";
                 }
             });
@@ -413,7 +685,7 @@ async function exportToExcel(){
             // Allocations
             allocations.filter(a=>a.testerId===tester.id)
                        .forEach(a=>{
-                if(new Date(a.start)<=weekEnd && new Date(a.end)>=weekStart){
+                if(new Date(a.start)<=wk.weekEnd && new Date(a.end)>=wk.weekStart){
                     total+=a.percent;
                     const proj=projects.find(p=>p.id===a.projectId);
                     if(proj){
@@ -425,7 +697,7 @@ async function exportToExcel(){
             if(total>100) cellText+="[OVER]";
 
             row.push(cellText.trim());
-        }
+        });
 
         data.push(row);
     });
@@ -490,30 +762,34 @@ async function refreshDropdowns(){
 
     // Tester table
     const testerTable=document.getElementById("testerTable");
-    testerTable.innerHTML="<tr><th>Name</th><th>Edit</th><th>Delete</th></tr>";
+    testerTable.innerHTML="<tr><th>Name</th><th>Actions</th></tr>";
     testers.forEach(t=>{
         testerTable.innerHTML+=`<tr>
             <td>${t.name}</td>
-            <td><button onclick="editTester(${t.id})">Edit</button></td>
-            <td><button onclick="deleteTester(${t.id})">Delete</button></td>
+            <td>
+                <button onclick="editTester(${t.id})">Edit</button>
+                <button onclick="deleteTester(${t.id})">Delete</button>
+            </td>
         </tr>`;
     });
 
     // Project table
     const projectTable=document.getElementById("projectTable");
-    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th><th>Edit</th><th>Delete</th></tr>";
+    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th><th>Actions</th></tr>";
     projects.forEach(p=>{
         projectTable.innerHTML+=`<tr>
             <td>${p.name}</td>
             <td>${p.priority}</td>
-            <td><button onclick="editProject(${p.id})">Edit</button></td>
-            <td><button onclick="deleteProject(${p.id})">Delete</button></td>
+            <td>
+                <button onclick="editProject(${p.id})">Edit</button>
+                <button onclick="deleteProject(${p.id})">Delete</button>
+            </td>
         </tr>`;
     });
 
     // Allocation table
     const allocationTable = document.getElementById("allocationTable");
-    allocationTable.innerHTML = "<tr><th>Tester</th><th>Project</th><th>Start</th><th>End</th><th>%</th><th>Edit</th><th>Delete</th></tr>";
+    allocationTable.innerHTML = "<tr><th>Tester</th><th>Project</th><th>Start</th><th>End</th><th>%</th><th>Actions</th></tr>";
     allocations.forEach(a => {
         const tester = testers.find(t => t.id === a.testerId);
         const project = projects.find(p => p.id === a.projectId);
@@ -525,14 +801,16 @@ async function refreshDropdowns(){
             <td>${a.start}</td>
             <td>${a.end}</td>
             <td>${a.percent}</td>
-            <td><button onclick="editAllocation(${a.id})">Edit</button></td>
-            <td><button onclick="deleteAllocation(${a.id})">Delete</button></td>
+            <td>
+                <button onclick="editAllocation(${a.id})">Edit</button>
+                <button onclick="deleteAllocation(${a.id})">Delete</button>
+            </td>
         </tr>`;
     });
 
     // Leave table
     const leaveTable = document.getElementById("leaveTable");
-    leaveTable.innerHTML = "<tr><th>Tester</th><th>Start</th><th>End</th><th>Edit</th><th>Delete</th></tr>";
+    leaveTable.innerHTML = "<tr><th>Tester</th><th>Start</th><th>End</th><th>Actions</th></tr>";
     leaves.forEach(l => {
         const tester = testers.find(t => t.id === l.testerId);
         const testerName = tester ? tester.name : "";
@@ -540,8 +818,10 @@ async function refreshDropdowns(){
             <td>${testerName}</td>
             <td>${l.start}</td>
             <td>${l.end}</td>
-            <td><button onclick="editLeave(${l.id})">Edit</button></td>
-            <td><button onclick="deleteLeave(${l.id})">Delete</button></td>
+            <td>
+                <button onclick="editLeave(${l.id})">Edit</button>
+                <button onclick="deleteLeave(${l.id})">Delete</button>
+            </td>
         </tr>`;
     });
 }
@@ -817,7 +1097,70 @@ async function renderGantt(){
     const leaves=await getAll("leaves");
 
     const startOfYear=new Date(YEAR,0,1);
+    const endOfYear = new Date(YEAR,11,31);
 
+    // Precompute all weeks for consistent use (header + rows)
+    const weeks = [];
+    let wIndex = 0;
+    while (true) {
+        const weekStart = new Date(startOfYear);
+        weekStart.setDate(startOfYear.getDate() + wIndex*7);
+        if (weekStart > endOfYear) break;
+
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        if (weekEnd > endOfYear) weekEnd.setTime(endOfYear.getTime());
+
+        // Build list of day numbers (dd) for the week
+        const days=[];
+        const dayCursor = new Date(weekStart);
+        while (dayCursor <= weekEnd) {
+            const dd = String(dayCursor.getDate()).padStart(2,"0");
+            days.push(dd);
+            dayCursor.setDate(dayCursor.getDate()+1);
+        }
+
+        // Use the mid‑week date to decide which month this week mostly belongs to
+        const midDate = new Date(weekStart);
+        midDate.setDate(weekStart.getDate()+3);
+        if (midDate > endOfYear) midDate.setTime(endOfYear.getTime());
+        const monthLabel = midDate.toLocaleString(undefined, { month: "short" });
+
+        weeks.push({ index: wIndex, weekStart, weekEnd, days, monthLabel });
+        wIndex++;
+    }
+
+    // Month strip
+    const monthStrip = document.createElement("div");
+    monthStrip.className = "gantt-month-strip";
+
+    const monthEmpty = document.createElement("div");
+    monthEmpty.className = "tester-label";
+    monthStrip.appendChild(monthEmpty);
+
+    const months = [];
+    let current = null;
+    weeks.forEach(wk => {
+        if(!current || current.label !== wk.monthLabel){
+            if(current) months.push(current);
+            current = { label: wk.monthLabel, count: 1 };
+        } else {
+            current.count++;
+        }
+    });
+    if(current) months.push(current);
+
+    months.forEach(m => {
+        const cell = document.createElement("div");
+        cell.className = "month-cell";
+        cell.style.flex = `0 0 ${m.count * 100}px`;
+        cell.textContent = m.label;
+        monthStrip.appendChild(cell);
+    });
+
+    container.appendChild(monthStrip);
+
+    // Week header row
     const header=document.createElement("div");
     header.className="gantt-header";
 
@@ -825,29 +1168,19 @@ async function renderGantt(){
     empty.className="tester-label";
     header.appendChild(empty);
 
-    for(let w=0; w<52; w++){
-        const weekStart=new Date(startOfYear);
-        weekStart.setDate(startOfYear.getDate()+w*7);
-        const weekEnd=new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate()+6);
-
-        // Build a single-line list of day numbers (dd) for the week
-        const days=[];
-        for(let d=0; d<7; d++){
-            const dayDate=new Date(weekStart);
-            dayDate.setDate(weekStart.getDate()+d);
-            const dd=String(dayDate.getDate()).padStart(2,"0");
-            days.push(dd);
-        }
-
+    weeks.forEach(wk => {
         const cell=document.createElement("div");
         cell.className="week-cell week-header";
-        cell.innerHTML=`W${w+1}<br>${days.join(" ")}`;
+        cell.innerHTML = `
+            <div class="week-week">W${wk.index + 1}</div>
+            <div class="week-days">${wk.days.join(" ")}</div>
+        `;
         header.appendChild(cell);
-    }
+    });
 
     container.appendChild(header);
 
+    // Rows
     testers.forEach(tester=>{
         const row=document.createElement("div");
         row.className="gantt-row";
@@ -857,26 +1190,21 @@ async function renderGantt(){
         label.innerText=tester.name;
         row.appendChild(label);
 
-        for(let w=0; w<52; w++){
-            const weekStart=new Date(startOfYear);
-            weekStart.setDate(startOfYear.getDate()+w*7);
-            const weekEnd=new Date(weekStart);
-            weekEnd.setDate(weekStart.getDate()+6);
-
+        weeks.forEach(wk => {
             const cell=document.createElement("div");
             cell.className="week-cell";
             let total=0;
 
             leaves.filter(l=>l.testerId===tester.id)
                   .forEach(l=>{
-                if(new Date(l.start)<=weekEnd && new Date(l.end)>=weekStart){
+                if(new Date(l.start)<=wk.weekEnd && new Date(l.end)>=wk.weekStart){
                     cell.innerHTML+=`<div class="leave-box">LEAVE</div>`;
                 }
             });
 
             allocations.filter(a=>a.testerId===tester.id)
                        .forEach(a=>{
-                if(new Date(a.start)<=weekEnd && new Date(a.end)>=weekStart){
+                if(new Date(a.start)<=wk.weekEnd && new Date(a.end)>=wk.weekStart){
                     total+=a.percent;
                     const proj=projects.find(p=>p.id===a.projectId);
                     if(proj){
@@ -891,7 +1219,7 @@ async function renderGantt(){
             if(total>100) cell.classList.add("over");
 
             row.appendChild(cell);
-        }
+        });
 
         container.appendChild(row);
     });
