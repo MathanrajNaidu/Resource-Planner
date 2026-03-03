@@ -831,9 +831,18 @@ async function renderGantt(){
         const weekEnd=new Date(weekStart);
         weekEnd.setDate(weekStart.getDate()+6);
 
+        // Build a single-line list of day numbers (dd) for the week
+        const days=[];
+        for(let d=0; d<7; d++){
+            const dayDate=new Date(weekStart);
+            dayDate.setDate(weekStart.getDate()+d);
+            const dd=String(dayDate.getDate()).padStart(2,"0");
+            days.push(dd);
+        }
+
         const cell=document.createElement("div");
         cell.className="week-cell week-header";
-        cell.innerHTML=`W${w+1}<br>${weekStart.toLocaleDateString()}<br>${weekEnd.toLocaleDateString()}`;
+        cell.innerHTML=`W${w+1}<br>${days.join(" ")}`;
         header.appendChild(cell);
     }
 
