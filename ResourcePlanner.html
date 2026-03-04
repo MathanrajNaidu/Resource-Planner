@@ -2,204 +2,275 @@
 <html>
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Enterprise Resource Planner</title>
-
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
+:root {
+    --bg-body: #f0f4fa;
+    --bg-card: #ffffff;
+    --bg-header: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    --bg-nav: #1e293b;
+    --bg-nav-hover: rgba(148, 163, 184, 0.15);
+    --bg-nav-active: linear-gradient(135deg, #3b82f6, #2563eb);
+    --bg-input: #f8fafc;
+    --border: rgba(203, 213, 225, 0.8);
+    --border-focus: #3b82f6;
+    --ring: rgba(59, 130, 246, 0.25);
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --text-nav: #cbd5e1;
+    --text-nav-active: #ffffff;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+    --shadow-lg: 0 12px 28px rgba(15, 23, 42, 0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --radius-full: 9999px;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+}
+
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    background: radial-gradient(circle at top left, #ffffff 0%, #e4ecf7 40%, #f4f6f9 100%);
-    color: #2c3e50;
-    line-height: 1.5;
+    font-family: var(--font);
+    background: var(--bg-body);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
 }
 
 .app-header {
-    padding: 18px 24px 12px;
-    background: linear-gradient(135deg, #1f2933, #111827);
-    color: #e5edff;
-    box-shadow: 0 3px 10px rgba(15, 23, 42, 0.35);
+    padding: 1.25rem 1.5rem;
+    background: var(--bg-header);
+    color: var(--text-nav-active);
+    box-shadow: var(--shadow-md);
 }
 
 .app-header h1 {
     margin: 0;
-    font-size: 22px;
+    font-size: clamp(1.25rem, 4vw, 1.5rem);
     font-weight: 700;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
+    letter-spacing: 0.02em;
 }
 
 .navbar {
     display: flex;
-    background: #1f2933;
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35);
+    flex-wrap: wrap;
+    gap: 0;
+    background: var(--bg-nav);
+    box-shadow: var(--shadow-sm);
     position: sticky;
     top: 0;
     z-index: 50;
 }
+
 .navbar button {
-    flex: 1;
-    padding: 14px 18px;
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 0.875rem 1rem;
     background: transparent;
     border: none;
-    color: #cbd5f5;
+    color: var(--text-nav);
     cursor: pointer;
+    font-family: var(--font);
     font-weight: 600;
-    font-size: 14px;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    font-size: clamp(0.75rem, 2.2vw, 0.875rem);
+    letter-spacing: 0.02em;
+    transition: background 0.2s ease, color 0.2s ease;
 }
+
 .navbar button:hover {
-    background: rgba(148, 163, 184, 0.22);
-    color: #e5edff;
+    background: var(--bg-nav-hover);
+    color: #f1f5f9;
 }
+
 .navbar button.active {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #f9fafb;
-    box-shadow: inset 0 -2px 0 rgba(15, 23, 42, 0.45);
+    background: var(--bg-nav-active);
+    color: var(--text-nav-active);
+    box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
 }
 
 .tab {
     display: none;
-    padding: 24px;
+    padding: clamp(1rem, 4vw, 1.5rem);
     max-width: 1200px;
-    margin: 0 auto 32px auto;
-}
-.tab.active {
-    display: block;
+    margin: 0 auto 2rem;
 }
 
-h2 {
-    margin: 0 0 16px 0;
-    font-size: 24px;
+.tab.active {
+    display: block;
+    animation: tabIn 0.25s ease;
+}
+
+@keyframes tabIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.tab h2 {
+    margin: 0 0 1rem;
+    font-size: clamp(1.25rem, 3.5vw, 1.5rem);
     font-weight: 700;
-    letter-spacing: 0.01em;
-    color: #111827;
+    color: var(--text);
+}
+
+.dashboard-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.dashboard-actions button {
+    flex: 0 1 auto;
 }
 
 h3 {
-    margin: 0 0 12px 0;
-    font-size: 18px;
+    margin: 0 0 0.75rem;
+    font-size: 1.0625rem;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
 }
 
 .section {
-    background: #ffffff;
-    padding: 18px 20px 14px;
-    margin-bottom: 20px;
-    border-radius: 12px;
-    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
-    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: var(--bg-card);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
 }
 
 .section h3 {
-    margin-bottom: 14px;
+    margin-bottom: 1rem;
+}
+
+/* Form layout: flex wrap so inputs/buttons sit inline on desktop, stack on small */
+.section > h3 {
+    flex: 1 1 100%;
+}
+
+.section > input,
+.section > select,
+.section > button {
+    margin: 0 0.5rem 0.5rem 0;
 }
 
 label {
     display: inline-flex;
     flex-direction: column;
-    gap: 3px;
-    margin: 0 16px 10px 0;
-    font-size: 12px;
+    gap: 0.25rem;
+    margin: 0 1rem 0.5rem 0;
+    font-size: 0.75rem;
     font-weight: 500;
-    color: #4b5563;
+    color: var(--text-muted);
 }
 
 input,
 select {
-    padding: 8px 10px;
-    min-width: 180px;
-    font-size: 13px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    box-sizing: border-box;
-    background: #f9fafb;
-    color: #111827;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.08s ease;
+    padding: 0.5rem 0.75rem;
+    min-width: 10rem;
+    font-family: var(--font);
+    font-size: 0.875rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg-input);
+    color: var(--text);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
 }
 
 input::placeholder {
-    color: #9ca3af;
+    color: #94a3b8;
 }
 
 input:focus,
 select:focus {
     outline: none;
-    border-color: #2563eb;
-    background: #ffffff;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.18);
-    transform: translateY(-0.5px);
+    border-color: var(--border-focus);
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--ring);
 }
 
 select {
-    min-width: 130px;
-    padding-right: 26px;
+    min-width: 8rem;
+    padding-right: 2rem;
     appearance: none;
-    background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%), linear-gradient(135deg, #6b7280 50%, transparent 50%);
-    background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%;
-    background-size: 5px 5px, 5px 5px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
+    background-position: right 0.75rem center;
 }
 
 input[type="color"] {
-    padding: 0;
-    height: 28px;
-    width: 42px;
-    border-radius: 8px;
-    overflow: hidden;
+    padding: 2px;
+    height: 2.25rem;
+    width: 2.75rem;
+    min-width: 2.75rem;
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    border: 1px solid #cbd5e1;
-    background: #f9fafb;
+    border: 1px solid var(--border);
 }
 
 input[type="date"] {
-    min-width: 160px;
+    min-width: 9rem;
 }
 
 input[type="number"] {
-    max-width: 120px;
+    max-width: 5rem;
 }
 
 button {
-    background: linear-gradient(135deg, #2563eb, #1d4ed8);
-    color: #ffffff;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #fff;
     border: none;
+    font-family: var(--font);
     font-weight: 600;
     letter-spacing: 0.02em;
     cursor: pointer;
-    padding: 9px 18px;
-    border-radius: 999px;
-    font-size: 14px;
-    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
-    transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius-full);
+    font-size: 0.875rem;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
 }
 
 button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.32);
-    opacity: 0.96;
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+    opacity: 0.95;
 }
 
 button:active {
     transform: translateY(0);
-    box-shadow: 0 6px 12px rgba(30, 64, 175, 0.4);
 }
 
 button:disabled {
-    cursor: default;
-    opacity: 0.55;
+    cursor: not-allowed;
+    opacity: 0.5;
     box-shadow: none;
+}
+
+/* Table wrapper for horizontal scroll on small screens */
+.table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
 }
 
 .gantt-container {
     overflow: auto;
-    border-radius: 10px;
-    border: 1px solid #d1d5db;
-    background: #ffffff;
-    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.08);
-    margin-top: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    box-shadow: var(--shadow-md);
+    margin-top: 1rem;
+    -webkit-overflow-scrolling: touch;
 }
 
 .gantt-wrapper {
@@ -208,39 +279,39 @@ button:disabled {
 }
 
 .gantt-fixed {
-    flex: 0 0 170px;
-    width: 170px;
+    flex: 0 0 10rem;
+    width: 10rem;
+    min-width: 10rem;
     overflow: hidden;
-    border-right: 1px solid #e5e7eb;
-    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.08);
+    border-right: 1px solid var(--border);
+    box-shadow: 4px 0 8px -2px rgba(0,0,0,0.06);
     z-index: 2;
-    background: #fff;
+    background: var(--bg-card);
 }
 
 .gantt-names-table {
-    width: 170px;
+    width: 10rem;
     border-collapse: collapse;
     table-layout: fixed;
 }
 
 .gantt-names-table th,
 .gantt-names-table td {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     border-right: none;
     vertical-align: top;
-    padding: 3px 8px;
-    box-sizing: border-box;
+    padding: 0.25rem 0.5rem;
 }
 
 .gantt-names-table .tester-corner {
-    background: linear-gradient(135deg, #e5e7eb 0%, #dbeafe 100%);
+    background: linear-gradient(135deg, #e2e8f0 0%, #dbeafe 100%);
 }
 
 .gantt-names-table .tester-label {
-    padding: 3px 8px;
-    background: linear-gradient(180deg, #f9fafb 0%, #eef2ff 100%);
+    padding: 0.25rem 0.5rem;
+    background: linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%);
     font-weight: 600;
-    font-size: 12px;
+    font-size: 0.75rem;
 }
 
 .gantt-scroll {
@@ -261,92 +332,88 @@ button:disabled {
 
 .gantt-table th,
 .gantt-table td {
-    border: 1px solid #e5e7eb;
+    border: 1px solid var(--border);
     vertical-align: top;
     padding: 0;
-    box-sizing: border-box;
 }
 
 .gantt-table .month-cell {
-    background: linear-gradient(180deg, #e5e7eb 0%, #dbeafe 100%);
-    font-size: 11px;
+    background: linear-gradient(180deg, #e2e8f0 0%, #dbeafe 100%);
+    font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #111827;
-    padding: 4px 2px;
+    letter-spacing: 0.05em;
+    color: var(--text);
+    padding: 0.25rem 2px;
     text-align: center;
-    height: 24px;
+    height: 1.5rem;
 }
 
 .gantt-table .week-header-cell {
-    background: linear-gradient(180deg, #e5e7eb 0%, #e0f2fe 100%);
+    background: linear-gradient(180deg, #e2e8f0 0%, #e0f2fe 100%);
     text-align: center;
-    font-size: 9px;
+    font-size: 0.5625rem;
     font-weight: 600;
-    color: #111827;
-    padding: 4px 2px;
-    height: 46px;
+    color: var(--text);
+    padding: 0.25rem 2px;
+    height: 2.875rem;
 }
 
 .gantt-table .week-week {
-    font-size: 9px;
+    font-size: 0.5625rem;
     font-weight: 700;
     display: block;
 }
 
 .gantt-table .week-days {
-    font-size: 9px;
+    font-size: 0.5625rem;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .gantt-table .week-cell {
-    height: 76px;
-    font-size: 10px;
-    padding: 3px 4px;
+    height: 4.75rem;
+    font-size: 0.625rem;
+    padding: 2px 4px;
     overflow: hidden;
-    background: #ffffff;
+    background: var(--bg-card);
     position: relative;
-    box-sizing: border-box;
 }
 
 .gantt-table thead th {
     position: sticky;
     top: 0;
     z-index: 1;
-    background: linear-gradient(180deg, #e5e7eb 0%, #dbeafe 100%);
+    background: linear-gradient(180deg, #e2e8f0 0%, #dbeafe 100%);
 }
 
 .project-box {
     padding: 2px 4px;
     border-radius: 4px;
-    font-size: 9px;
-    color: #ffffff;
-    margin-bottom: 3px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+    font-size: 0.5625rem;
+    color: #fff;
+    margin-bottom: 2px;
+    box-shadow: var(--shadow-sm);
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
-    box-sizing: border-box;
 }
 
 .project-box[data-start][data-end] {
     position: absolute;
-    min-width: 8px;
+    min-width: 6px;
 }
 
 .leave-box {
-    background: linear-gradient(135deg, #6b7280, #4b5563);
-    color: #ffffff;
+    background: linear-gradient(135deg, #64748b, #475569);
+    color: #fff;
     text-align: center;
     border-radius: 4px;
-    font-size: 9px;
-    margin-bottom: 3px;
+    font-size: 0.5625rem;
+    margin-bottom: 2px;
     padding: 2px 4px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
-    box-sizing: border-box;
+    box-shadow: var(--shadow-sm);
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -354,11 +421,11 @@ button:disabled {
 
 .leave-box[data-start][data-end] {
     position: absolute;
-    min-width: 8px;
+    min-width: 6px;
 }
 
 .over {
-    box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.85);
+    box-shadow: inset 0 0 0 2px rgba(220, 38, 38, 0.8);
     background-image: repeating-linear-gradient(
         135deg,
         rgba(248, 113, 113, 0.08),
@@ -370,88 +437,177 @@ button:disabled {
 
 table {
     width: 100%;
+    min-width: 400px;
     border-collapse: collapse;
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     overflow: hidden;
-    background: #ffffff;
+    background: var(--bg-card);
+    font-size: 0.875rem;
 }
 
 th,
 td {
-    border: 1px solid #e5e7eb;
-    padding: 8px 10px;
-    font-size: 13px;
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
 }
 
 th {
-    background: linear-gradient(180deg, #f3f4f6 0%, #e5e7eb 100%);
+    background: linear-gradient(180deg, #f1f5f9 0%, #e2e8f0 100%);
     text-align: left;
     font-weight: 600;
-    color: #111827;
+    color: var(--text);
+    white-space: nowrap;
 }
 
 tbody tr:nth-child(even) {
-    background: #f9fafb;
+    background: #f8fafc;
 }
 
 tbody tr:hover {
     background: #eff6ff;
 }
 
-/* Simple modal for editing records */
+td button {
+    padding: 0.35rem 0.65rem;
+    font-size: 0.8125rem;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Modal */
 .modal-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.45);
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 999;
-    backdrop-filter: blur(3px);
+    backdrop-filter: blur(4px);
+    padding: 1rem;
+    overflow-y: auto;
 }
+
+.modal-overlay[style*="flex"] {
+    animation: overlayIn 0.2s ease;
+}
+
+@keyframes overlayIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
 .modal {
-    background: #ffffff;
-    padding: 22px 22px 18px;
-    border-radius: 12px;
+    background: var(--bg-card);
+    padding: 1.5rem;
+    border-radius: var(--radius);
     min-width: 280px;
     max-width: 480px;
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.45);
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    margin: auto;
+    animation: modalIn 0.25s ease;
 }
+
+@keyframes modalIn {
+    from { opacity: 0; transform: scale(0.98) translateY(-8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
 .modal h3 {
     margin-top: 0;
-    margin-bottom: 14px;
+    margin-bottom: 1rem;
 }
+
 .modal-footer {
-    margin-top: 18px;
-    text-align: right;
+    margin-top: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
 }
 
 .modal label {
     width: 100%;
     margin-right: 0;
+    margin-bottom: 0.75rem;
 }
 
 .modal input,
 .modal select {
     width: 100%;
+    min-width: 0;
 }
 
+/* Responsive breakpoints */
 @media (max-width: 768px) {
-    .tab {
-        padding: 16px;
+    .navbar button {
+        flex: 1 1 50%;
+        min-width: 120px;
     }
 
-    .gantt-table .col-tester {
-        width: 130px;
-        min-width: 130px;
+    .tab {
+        padding: 1rem;
+    }
+
+    .section {
+        padding: 1rem 1.25rem;
+    }
+
+    .section > input,
+    .section > select,
+    .section > button {
+        width: 100%;
+        min-width: 0;
+        margin-right: 0;
+    }
+
+    .gantt-fixed {
+        flex: 0 0 7rem;
+        width: 7rem;
+        min-width: 7rem;
+    }
+
+    .gantt-names-table {
+        width: 7rem;
     }
 
     .gantt-table .col-week {
-        width: 80px;
-        min-width: 80px;
+        width: 72px;
+        min-width: 72px;
+    }
+
+    .gantt-table .week-cell {
+        height: 4rem;
+    }
+
+    .dashboard-actions button {
+        flex: 1 1 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar button {
+        flex: 1 1 100%;
+    }
+
+    .app-header {
+        padding: 1rem 1.25rem;
+    }
+
+    table {
+        min-width: 320px;
+    }
+
+    th, td {
+        padding: 0.4rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    td button {
+        display: block;
+        width: 100%;
+        margin-bottom: 0.35rem;
     }
 }
 </style>
@@ -474,9 +630,11 @@ tbody tr:hover {
 <!-- DASHBOARD TAB -->
 <div id="dashboard" class="tab active">
     <h2>Yearly Capacity Gantt</h2>
-    <button onclick="exportToExcel()">Export to Excel</button>
-    <button onclick="exportToJson()">Export JSON</button>
-    <button onclick="importFromJson()">Import JSON</button>
+    <div class="dashboard-actions">
+        <button onclick="exportToExcel()">Export to Excel</button>
+        <button onclick="exportToJson()">Export JSON</button>
+        <button onclick="importFromJson()">Import JSON</button>
+    </div>
     <div id="gantt" class="gantt-container"></div>
 </div>
 
@@ -489,7 +647,9 @@ tbody tr:hover {
     </div>
     <div class="section">
         <h3>Tester List</h3>
-        <table id="testerTable"></table>
+        <div class="table-wrapper">
+            <table id="testerTable"></table>
+        </div>
     </div>
 </div>
 
@@ -506,7 +666,9 @@ tbody tr:hover {
     </div>
     <div class="section">
         <h3>Project List</h3>
-        <table id="projectTable"></table>
+        <div class="table-wrapper">
+            <table id="projectTable"></table>
+        </div>
     </div>
 </div>
 
@@ -523,7 +685,9 @@ tbody tr:hover {
     </div>
     <div class="section">
         <h3>Allocation List</h3>
-        <table id="allocationTable"></table>
+        <div class="table-wrapper">
+            <table id="allocationTable"></table>
+        </div>
     </div>
 </div>
 
@@ -538,7 +702,9 @@ tbody tr:hover {
     </div>
     <div class="section">
         <h3>Leave List</h3>
-        <table id="leaveTable"></table>
+        <div class="table-wrapper">
+            <table id="leaveTable"></table>
+        </div>
     </div>
 </div>
 <!-- Generic Edit Modal -->
