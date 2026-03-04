@@ -683,63 +683,77 @@ async function exportToExcel(){
     const startOfYear=new Date(YEAR,0,1);
     const endOfYear = new Date(YEAR,11,31);
 
-    // Build the same weeks array used conceptually in the Gantt
-    const weeks = [];
-    let w = 0;
-    while (true) {
-        const weekStart = new Date(startOfYear);
-        weekStart.setDate(startOfYear.getDate() + w*7);
-        if (weekStart > endOfYear) break;
-
-        const weekEnd = new Date(weekStart);
-        weekEnd.setDate(weekStart.getDate() + 6);
-        if (weekEnd > endOfYear) weekEnd.setTime(endOfYear.getTime());
-
-        weeks.push({ weekStart, weekEnd });
-        w++;
+    // Same day-level date parsing as renderGantt (local date, not UTC)
+    function toDayTime(dateStrOrDate) {
+        const d = typeof dateStrOrDate === "string"
+            ? (() => { const [y, m, day] = dateStrOrDate.split("-").map(Number); return new Date(y, m - 1, day); })()
+            : new Date(dateStrOrDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
     }
 
-    let data=[];
+    // Build one column per day (each date in its own cell)
+    const dayColumns = [];
+    const cursor = new Date(startOfYear);
+    while (cursor <= endOfYear) {
+        const dayTime = toDayTime(cursor);
+        const monthLabel = cursor.toLocaleString(undefined, { month: "short" });
+        const dayNum = String(cursor.getDate()).padStart(2, "0");
+        dayColumns.push({ date: new Date(cursor), dayTime, monthLabel, dayNum });
+        cursor.setDate(cursor.getDate() + 1);
+    }
 
-    // Header row
-    let header=["Tester"];
-    weeks.forEach((wk, index) => {
-        header.push(
-            `W${index+1} (${wk.weekStart.toLocaleDateString()} - ${wk.weekEnd.toLocaleDateString()})`
-        );
-    });
-    data.push(header);
+    let data = [];
 
-    // Rows
-    testers.forEach(tester=>{
-        let row=[tester.name];
+    // Header row 1: Month (one cell per day; we'll merge same months)
+    const header1 = ["Tester"];
+    dayColumns.forEach((d) => { header1.push(d.monthLabel); });
+    data.push(header1);
 
-        weeks.forEach(wk => {
-            let cellText="";
-            let total=0;
+    // Build month merge ranges for row 0 (so Jan spans all Jan days, etc.)
+    const monthMerges = [];
+    let runStart = 0;
+    for (let i = 1; i <= dayColumns.length; i++) {
+        const newMonth = i === dayColumns.length || dayColumns[i].monthLabel !== dayColumns[runStart].monthLabel;
+        if (newMonth) {
+            if (runStart < i) {
+                monthMerges.push({ s: { r: 0, c: 1 + runStart }, e: { r: 0, c: 0 + i } });
+            }
+            runStart = i;
+        }
+    }
 
-            // Leaves
-            leaves.filter(l=>l.testerId===tester.id)
-                  .forEach(l=>{
-                if(new Date(l.start)<=wk.weekEnd && new Date(l.end)>=wk.weekStart){
-                    cellText+="LEAVE ";
+    // Header row 2: Date (one cell per day: 01, 02, 03...)
+    const header2 = ["Date"];
+    dayColumns.forEach((d) => { header2.push(d.dayNum); });
+    data.push(header2);
+
+    // Data rows: one cell per day per tester
+    testers.forEach(tester => {
+        const row = [tester.name];
+
+        dayColumns.forEach((dayCol) => {
+            const dayTime = dayCol.dayTime;
+            let cellText = "";
+            let total = 0;
+
+            leaves.filter(l => l.testerId === tester.id).forEach(l => {
+                const lStart = toDayTime(l.start);
+                const lEnd = toDayTime(l.end);
+                if (lStart <= dayTime && dayTime <= lEnd) cellText += "LEAVE ";
+            });
+
+            allocations.filter(a => a.testerId === tester.id).forEach(a => {
+                const aStart = toDayTime(a.start);
+                const aEnd = toDayTime(a.end);
+                if (aStart <= dayTime && dayTime <= aEnd) {
+                    total += a.percent;
+                    const proj = projects.find(p => p.id === a.projectId);
+                    if (proj) cellText += `${proj.name} (${a.percent}%) `;
                 }
             });
 
-            // Allocations
-            allocations.filter(a=>a.testerId===tester.id)
-                       .forEach(a=>{
-                if(new Date(a.start)<=wk.weekEnd && new Date(a.end)>=wk.weekStart){
-                    total+=a.percent;
-                    const proj=projects.find(p=>p.id===a.projectId);
-                    if(proj){
-                        cellText+=`${proj.name} (${a.percent}%) `;
-                    }
-                }
-            });
-
-            if(total>100) cellText+="[OVER]";
-
+            if (total > 100) cellText += "[OVER]";
             row.push(cellText.trim());
         });
 
@@ -747,6 +761,7 @@ async function exportToExcel(){
     });
 
     const ws = XLSX.utils.aoa_to_sheet(data);
+    if (monthMerges.length) ws["!merges"] = monthMerges;
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Yearly Capacity");
 
