@@ -202,83 +202,121 @@ button:disabled {
     margin-top: 16px;
 }
 
-.gantt-header,
-.gantt-row {
+.gantt-wrapper {
     display: flex;
+    width: 100%;
 }
 
-.gantt-month-strip {
-    display: flex;
+.gantt-fixed {
+    flex: 0 0 170px;
+    width: 170px;
+    overflow: hidden;
+    border-right: 1px solid #e5e7eb;
+    box-shadow: 4px 0 8px -2px rgba(0, 0, 0, 0.08);
+    z-index: 2;
+    background: #fff;
+}
+
+.gantt-names-table {
+    width: 170px;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.gantt-names-table th,
+.gantt-names-table td {
+    border: 1px solid #e5e7eb;
+    border-right: none;
+    vertical-align: top;
+    padding: 3px 8px;
+    box-sizing: border-box;
+}
+
+.gantt-names-table .tester-corner {
+    background: linear-gradient(135deg, #e5e7eb 0%, #dbeafe 100%);
+}
+
+.gantt-names-table .tester-label {
+    padding: 3px 8px;
+    background: linear-gradient(180deg, #f9fafb 0%, #eef2ff 100%);
+    font-weight: 600;
+    font-size: 12px;
+}
+
+.gantt-scroll {
+    flex: 1;
+    min-width: 0;
+    overflow: auto;
+}
+
+.gantt-table {
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.gantt-table .col-week {
+    width: 100px;
+    min-width: 100px;
+}
+
+.gantt-table th,
+.gantt-table td {
+    border: 1px solid #e5e7eb;
+    vertical-align: top;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.gantt-table .month-cell {
     background: linear-gradient(180deg, #e5e7eb 0%, #dbeafe 100%);
-    border-bottom: 1px solid #e5e7eb;
-    position: sticky;
-    top: 0;
-    z-index: 3;
-}
-
-.month-cell {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: #111827;
-    border-right: 1px solid #e5e7eb;
     padding: 4px 2px;
+    text-align: center;
+    height: 24px;
 }
 
-.tester-label {
-    width: 170px;
-    min-width: 170px;
-    padding: 10px 8px;
-    border-right: 1px solid #e5e7eb;
-    background: linear-gradient(180deg, #f9fafb 0%, #eef2ff 100%);
-    font-weight: 600;
-    position: sticky;
-    left: 0;
-    z-index: 2;
-    font-size: 12px;
-}
-
-.week-cell {
-    width: 100px;
-    min-width: 100px;
-    height: 76px;
-    border-right: 1px solid #e5e7eb;
-    border-bottom: 1px solid #e5e7eb;
-    font-size: 10px;
-    padding: 3px 4px;
-    overflow: hidden;
-    background: #ffffff;
-}
-
-.week-header {
+.gantt-table .week-header-cell {
     background: linear-gradient(180deg, #e5e7eb 0%, #e0f2fe 100%);
     text-align: center;
     font-size: 9px;
     font-weight: 600;
     color: #111827;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 2px;
     padding: 4px 2px;
     height: 46px;
 }
 
-.week-week {
+.gantt-table .week-week {
     font-size: 9px;
     font-weight: 700;
+    display: block;
 }
 
-.week-days {
+.gantt-table .week-days {
     font-size: 9px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.gantt-table .week-cell {
+    height: 76px;
+    font-size: 10px;
+    padding: 3px 4px;
+    overflow: hidden;
+    background: #ffffff;
+    position: relative;
+    box-sizing: border-box;
+}
+
+.gantt-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    background: linear-gradient(180deg, #e5e7eb 0%, #dbeafe 100%);
 }
 
 .project-box {
@@ -291,6 +329,12 @@ button:disabled {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
+    box-sizing: border-box;
+}
+
+.project-box[data-start][data-end] {
+    position: absolute;
+    min-width: 8px;
 }
 
 .leave-box {
@@ -391,12 +435,12 @@ tbody tr:hover {
         padding: 16px;
     }
 
-    .tester-label {
+    .gantt-table .col-tester {
         width: 130px;
         min-width: 130px;
     }
 
-    .week-cell {
+    .gantt-table .col-week {
         width: 80px;
         min-width: 80px;
     }
@@ -1130,14 +1174,7 @@ async function renderGantt(){
         wIndex++;
     }
 
-    // Month strip
-    const monthStrip = document.createElement("div");
-    monthStrip.className = "gantt-month-strip";
-
-    const monthEmpty = document.createElement("div");
-    monthEmpty.className = "tester-label";
-    monthStrip.appendChild(monthEmpty);
-
+    // Build months list for month row (colspans)
     const months = [];
     let current = null;
     weeks.forEach(wk => {
@@ -1150,78 +1187,159 @@ async function renderGantt(){
     });
     if(current) months.push(current);
 
+    const wrapper = document.createElement("div");
+    wrapper.className = "gantt-wrapper";
+
+    const fixedCol = document.createElement("div");
+    fixedCol.className = "gantt-fixed";
+    const namesTable = document.createElement("table");
+    namesTable.className = "gantt-names-table";
+    const namesThead = document.createElement("thead");
+    const namesHeaderRow1 = document.createElement("tr");
+    const cornerCell = document.createElement("th");
+    cornerCell.className = "tester-corner";
+    cornerCell.rowSpan = 2;
+    namesHeaderRow1.appendChild(cornerCell);
+    namesThead.appendChild(namesHeaderRow1);
+    const namesHeaderRow2 = document.createElement("tr");
+    namesThead.appendChild(namesHeaderRow2);
+    namesTable.appendChild(namesThead);
+    const namesTbody = document.createElement("tbody");
+    testers.forEach(tester => {
+        const tr = document.createElement("tr");
+        const td = document.createElement("td");
+        td.className = "tester-label";
+        td.textContent = tester.name;
+        tr.appendChild(td);
+        namesTbody.appendChild(tr);
+    });
+    namesTable.appendChild(namesTbody);
+    fixedCol.appendChild(namesTable);
+    wrapper.appendChild(fixedCol);
+
+    const scrollCol = document.createElement("div");
+    scrollCol.className = "gantt-scroll";
+    const table = document.createElement("table");
+    table.className = "gantt-table";
+    table.style.minWidth = (weeks.length * 100) + "px";
+
+    const colgroup = document.createElement("colgroup");
+    weeks.forEach(() => {
+        const col = document.createElement("col");
+        col.className = "col-week";
+        colgroup.appendChild(col);
+    });
+    table.appendChild(colgroup);
+
+    const thead = document.createElement("thead");
+    const monthRow = document.createElement("tr");
     months.forEach(m => {
-        const cell = document.createElement("div");
-        cell.className = "month-cell";
-        cell.style.flex = `0 0 ${m.count * 100}px`;
-        cell.textContent = m.label;
-        monthStrip.appendChild(cell);
+        const th = document.createElement("th");
+        th.className = "month-cell";
+        th.colSpan = m.count;
+        th.textContent = m.label;
+        monthRow.appendChild(th);
     });
-
-    container.appendChild(monthStrip);
-
-    // Week header row
-    const header=document.createElement("div");
-    header.className="gantt-header";
-
-    const empty=document.createElement("div");
-    empty.className="tester-label";
-    header.appendChild(empty);
-
+    thead.appendChild(monthRow);
+    const weekRow = document.createElement("tr");
     weeks.forEach(wk => {
-        const cell=document.createElement("div");
-        cell.className="week-cell week-header";
-        cell.innerHTML = `
-            <div class="week-week">W${wk.index + 1}</div>
-            <div class="week-days">${wk.days.join(" ")}</div>
+        const th = document.createElement("th");
+        th.className = "week-header-cell";
+        th.innerHTML = `
+            <span class="week-week">W${wk.index + 1}</span>
+            <span class="week-days">${wk.days.join(" ")}</span>
         `;
-        header.appendChild(cell);
+        weekRow.appendChild(th);
     });
+    thead.appendChild(weekRow);
+    table.appendChild(thead);
 
-    container.appendChild(header);
+    function toDayTime(dateStrOrDate) {
+        const d = typeof dateStrOrDate === "string"
+            ? (() => { const [y, m, day] = dateStrOrDate.split("-").map(Number); return new Date(y, m - 1, day); })()
+            : new Date(dateStrOrDate);
+        d.setHours(0, 0, 0, 0);
+        return d.getTime();
+    }
+    const dayMs = 24 * 60 * 60 * 1000;
+    function formatDateForTooltip(dateStr) {
+        const [y, m, d] = dateStr.split("-").map(Number);
+        return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
 
-    // Rows
-    testers.forEach(tester=>{
-        const row=document.createElement("div");
-        row.className="gantt-row";
-
-        const label=document.createElement("div");
-        label.className="tester-label";
-        label.innerText=tester.name;
-        row.appendChild(label);
+    const tbody = document.createElement("tbody");
+    testers.forEach(tester => {
+        const row = document.createElement("tr");
 
         weeks.forEach(wk => {
-            const cell=document.createElement("div");
-            cell.className="week-cell";
-            let total=0;
+            const cell = document.createElement("td");
+            cell.className = "week-cell";
+            let total = 0;
+            const wkStartTime = toDayTime(wk.weekStart);
+            const wkEndTime = toDayTime(wk.weekEnd);
+            const weekSpanMs = (wkEndTime - wkStartTime) / dayMs + 1;
 
-            leaves.filter(l=>l.testerId===tester.id)
-                  .forEach(l=>{
-                if(new Date(l.start)<=wk.weekEnd && new Date(l.end)>=wk.weekStart){
-                    cell.innerHTML+=`<div class="leave-box">LEAVE</div>`;
+            leaves.filter(l => l.testerId === tester.id).forEach(l => {
+                if (new Date(l.start) <= wk.weekEnd && new Date(l.end) >= wk.weekStart) {
+                    cell.innerHTML += "<div class=\"leave-box\">LEAVE</div>";
                 }
             });
 
-            allocations.filter(a=>a.testerId===tester.id)
-                       .forEach(a=>{
-                if(new Date(a.start)<=wk.weekEnd && new Date(a.end)>=wk.weekStart){
-                    total+=a.percent;
-                    const proj=projects.find(p=>p.id===a.projectId);
-                    if(proj){
-                        cell.innerHTML+=`
-                        <div class="project-box" style="background:${proj.color}">
-                            ${proj.name} (${a.percent}%)
-                        </div>`;
+            let allocRowIndex = 0;
+            allocations.filter(a => a.testerId === tester.id).forEach(a => {
+                const aStartTime = toDayTime(a.start);
+                const aEndTime = toDayTime(a.end);
+                if (aStartTime <= wkEndTime && aEndTime >= wkStartTime) {
+                    total += a.percent;
+                    const proj = projects.find(p => p.id === a.projectId);
+                    if (proj) {
+                        const effStart = Math.max(aStartTime, wkStartTime);
+                        const effEnd = Math.min(aEndTime, wkEndTime);
+                        const leftPercent = ((effStart - wkStartTime) / dayMs / weekSpanMs) * 100;
+                        const numDays = (effEnd - effStart) / dayMs + 1;
+                        const widthPercent = (numDays / weekSpanMs) * 100;
+                        const title = "Start: " + formatDateForTooltip(a.start) + " — End: " + formatDateForTooltip(a.end);
+                        const box = document.createElement("div");
+                        box.className = "project-box";
+                        box.setAttribute("data-start", a.start);
+                        box.setAttribute("data-end", a.end);
+                        box.setAttribute("title", title);
+                        box.style.background = proj.color;
+                        box.style.left = leftPercent + "%";
+                        box.style.width = Math.max(2, widthPercent) + "%";
+                        box.style.top = (allocRowIndex * 18) + "px";
+                        box.textContent = proj.name + " (" + a.percent + "%)";
+                        cell.appendChild(box);
+                        allocRowIndex++;
                     }
                 }
             });
 
-            if(total>100) cell.classList.add("over");
-
+            if (total > 100) cell.classList.add("over");
             row.appendChild(cell);
         });
 
-        container.appendChild(row);
+        tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+    scrollCol.appendChild(table);
+    wrapper.appendChild(scrollCol);
+    container.appendChild(wrapper);
+
+    function syncRowHeights() {
+        const datesThead = table.querySelector("thead");
+        const datesBodyRows = table.querySelector("tbody").rows;
+        const namesCorner = namesTable.querySelector(".tester-corner");
+        const namesBodyCells = namesTable.querySelectorAll(".tester-label");
+        if (datesThead && namesCorner) {
+            namesCorner.style.height = datesThead.offsetHeight + "px";
+        }
+        for (let i = 0; i < datesBodyRows.length && i < namesBodyCells.length; i++) {
+            namesBodyCells[i].style.height = datesBodyRows[i].offsetHeight + "px";
+        }
+    }
+    requestAnimationFrame(() => {
+        requestAnimationFrame(syncRowHeights);
     });
 }
 
