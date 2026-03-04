@@ -311,6 +311,10 @@ button:disabled {
 
 .gantt-names-table .tester-corner {
     background: linear-gradient(135deg, #e2e8f0 0%, #dbeafe 100%);
+    /* Match scroll table header height (month-cell 1.5rem + week-header-cell 2.875rem) so no refresh needed */
+    height: calc(1.5rem + 2.875rem);
+    min-height: calc(1.5rem + 2.875rem);
+    box-sizing: border-box;
 }
 
 .gantt-names-table .tester-label {
@@ -1401,15 +1405,6 @@ async function renderGantt(){
     namesThead.appendChild(namesHeaderRow2);
     namesTable.appendChild(namesThead);
     const namesTbody = document.createElement("tbody");
-    testers.forEach(tester => {
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.className = "tester-label";
-        td.textContent = tester.name;
-        tr.appendChild(td);
-        namesTbody.appendChild(tr);
-    });
-    namesTable.appendChild(namesTbody);
     fixedCol.appendChild(namesTable);
     wrapper.appendChild(fixedCol);
 
@@ -1491,6 +1486,17 @@ async function renderGantt(){
         const { keyToLane, numLanes } = assignLanes(testerAllocs, testerLeaves);
         const rowHeight = Math.max(ROW_HEIGHT_BASE, numLanes * LANE_HEIGHT + 12);
 
+        // Build names column row with same height so fixed column stays aligned (fixes misalignment after adding testers)
+        const nameTr = document.createElement("tr");
+        const nameTd = document.createElement("td");
+        nameTd.className = "tester-label";
+        nameTd.textContent = tester.name;
+        nameTd.style.height = rowHeight + "px";
+        nameTd.style.minHeight = rowHeight + "px";
+        nameTd.style.boxSizing = "border-box";
+        nameTr.appendChild(nameTd);
+        namesTbody.appendChild(nameTr);
+
         const row = document.createElement("tr");
 
         weeks.forEach(wk => {
@@ -1562,26 +1568,32 @@ async function renderGantt(){
 
         tbody.appendChild(row);
     });
+    namesTable.appendChild(namesTbody);
     table.appendChild(tbody);
     scrollCol.appendChild(table);
     wrapper.appendChild(scrollCol);
     container.appendChild(wrapper);
 
-    function syncRowHeights() {
-        const datesThead = table.querySelector("thead");
-        const datesBodyRows = table.querySelector("tbody").rows;
-        const namesCorner = namesTable.querySelector(".tester-corner");
-        const namesBodyCells = namesTable.querySelectorAll(".tester-label");
-        if (datesThead && namesCorner) {
-            namesCorner.style.height = datesThead.offsetHeight + "px";
-        }
-        for (let i = 0; i < datesBodyRows.length && i < namesBodyCells.length; i++) {
-            namesBodyCells[i].style.height = datesBodyRows[i].offsetHeight + "px";
+    // Keep tester-corner in sync with scroll thead (fonts/zoom); CSS already sets correct height so no refresh needed
+    const datesThead = table.querySelector("thead");
+    const namesCorner = namesTable.querySelector(".tester-corner");
+    function applyHeaderHeight() {
+        if (!datesThead || !namesCorner) return;
+        const h = datesThead.offsetHeight;
+        if (h > 0) {
+            namesCorner.style.height = h + "px";
+            namesCorner.style.minHeight = h + "px";
         }
     }
-    requestAnimationFrame(() => {
-        requestAnimationFrame(syncRowHeights);
-    });
+    if (datesThead && namesCorner) {
+        if (typeof ResizeObserver !== "undefined") {
+            const ro = new ResizeObserver(applyHeaderHeight);
+            ro.observe(datesThead);
+        }
+        requestAnimationFrame(() => requestAnimationFrame(applyHeaderHeight));
+        setTimeout(applyHeaderHeight, 0);
+        setTimeout(applyHeaderHeight, 100);
+    }
 }
 
 // DB open will trigger initial refresh via request.onsuccess
