@@ -1,0 +1,19 @@
+{
+  "name": "Enterprise Resource Planner",
+  "short_name": "Resource Planner",
+  "description": "Plan and manage enterprise resources, projects, and allocations",
+  "start_url": "./ResourcePlanner.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#1e293b",
+  "background_color": "#f0f4fa",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
