@@ -346,6 +346,15 @@ button:disabled {
     margin-bottom: 3px;
     padding: 2px 4px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.35);
+    box-sizing: border-box;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.leave-box[data-start][data-end] {
+    position: absolute;
+    min-width: 8px;
 }
 
 .over {
@@ -1282,25 +1291,70 @@ async function renderGantt(){
         return new Date(y, m - 1, d).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
     }
 
+    // Assign vertical lanes so overlapping allocations and leaves (in time) get different rows and never overlap.
+    function assignLanes(testerAllocs, testerLeaves) {
+        const intervals = [
+            ...testerAllocs.map(a => ({ key: "a-" + a.id, start: toDayTime(a.start), end: toDayTime(a.end) })),
+            ...testerLeaves.map(l => ({ key: "l-" + l.id, start: toDayTime(l.start), end: toDayTime(l.end) }))
+        ].sort((a, b) => a.start - b.start);
+        const laneEnd = [];
+        const keyToLane = new Map();
+        for (const it of intervals) {
+            let lane = 0;
+            while (lane < laneEnd.length && laneEnd[lane] > it.start) lane++;
+            if (lane === laneEnd.length) laneEnd.push(0);
+            laneEnd[lane] = it.end;
+            keyToLane.set(it.key, lane);
+        }
+        return { keyToLane, numLanes: laneEnd.length };
+    }
+
+    const ROW_HEIGHT_BASE = 76;
+    const LANE_HEIGHT = 20;
+
     const tbody = document.createElement("tbody");
     testers.forEach(tester => {
+        const testerAllocs = allocations.filter(a => a.testerId === tester.id);
+        const testerLeaves = leaves.filter(l => l.testerId === tester.id);
+        const { keyToLane, numLanes } = assignLanes(testerAllocs, testerLeaves);
+        const rowHeight = Math.max(ROW_HEIGHT_BASE, numLanes * LANE_HEIGHT + 12);
+
         const row = document.createElement("tr");
 
         weeks.forEach(wk => {
             const cell = document.createElement("td");
             cell.className = "week-cell";
+            cell.style.height = rowHeight + "px";
+            cell.style.minHeight = rowHeight + "px";
             let total = 0;
             const wkStartTime = toDayTime(wk.weekStart);
             const wkEndTime = toDayTime(wk.weekEnd);
             const weekSpanMs = (wkEndTime - wkStartTime) / dayMs + 1;
 
-            leaves.filter(l => l.testerId === tester.id).forEach(l => {
-                if (new Date(l.start) <= wk.weekEnd && new Date(l.end) >= wk.weekStart) {
-                    cell.innerHTML += "<div class=\"leave-box\">LEAVE</div>";
+            testerLeaves.forEach(l => {
+                const lStartTime = toDayTime(l.start);
+                const lEndTime = toDayTime(l.end);
+                if (lStartTime <= wkEndTime && lEndTime >= wkStartTime) {
+                    const lane = keyToLane.get("l-" + l.id) ?? 0;
+                    const effStart = Math.max(lStartTime, wkStartTime);
+                    const effEnd = Math.min(lEndTime, wkEndTime);
+                    const leftPercent = ((effStart - wkStartTime) / dayMs / weekSpanMs) * 100;
+                    const numDays = (effEnd - effStart) / dayMs + 1;
+                    const widthPercent = (numDays / weekSpanMs) * 100;
+                    const title = "Leave: " + formatDateForTooltip(l.start) + " — " + formatDateForTooltip(l.end);
+                    const box = document.createElement("div");
+                    box.className = "leave-box";
+                    box.setAttribute("data-start", l.start);
+                    box.setAttribute("data-end", l.end);
+                    box.setAttribute("title", title);
+                    box.style.left = leftPercent + "%";
+                    box.style.width = Math.max(2, widthPercent) + "%";
+                    box.style.top = (lane * LANE_HEIGHT) + "px";
+                    box.textContent = "LEAVE";
+                    cell.appendChild(box);
                 }
             });
 
-            let allocRowIndex = 0;
             allocations.filter(a => a.testerId === tester.id).forEach(a => {
                 const aStartTime = toDayTime(a.start);
                 const aEndTime = toDayTime(a.end);
@@ -1308,12 +1362,13 @@ async function renderGantt(){
                     total += a.percent;
                     const proj = projects.find(p => p.id === a.projectId);
                     if (proj) {
+                        const lane = keyToLane.get("a-" + a.id) ?? 0;
                         const effStart = Math.max(aStartTime, wkStartTime);
                         const effEnd = Math.min(aEndTime, wkEndTime);
                         const leftPercent = ((effStart - wkStartTime) / dayMs / weekSpanMs) * 100;
                         const numDays = (effEnd - effStart) / dayMs + 1;
                         const widthPercent = (numDays / weekSpanMs) * 100;
-                        const title = "Start: " + formatDateForTooltip(a.start) + " — End: " + formatDateForTooltip(a.end);
+                        const title = proj.name + ": " + formatDateForTooltip(a.start) + " — " + formatDateForTooltip(a.end);
                         const box = document.createElement("div");
                         box.className = "project-box";
                         box.setAttribute("data-start", a.start);
@@ -1322,10 +1377,9 @@ async function renderGantt(){
                         box.style.background = proj.color;
                         box.style.left = leftPercent + "%";
                         box.style.width = Math.max(2, widthPercent) + "%";
-                        box.style.top = (allocRowIndex * 18) + "px";
+                        box.style.top = (lane * LANE_HEIGHT) + "px";
                         box.textContent = proj.name + " (" + a.percent + "%)";
                         cell.appendChild(box);
-                        allocRowIndex++;
                     }
                 }
             });
