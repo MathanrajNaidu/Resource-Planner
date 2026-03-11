@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Resource Planner">
-<title>Enterprise Resource Planner</title>
+<title>Resource Planner</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -669,8 +669,12 @@ td button {
         <h3>Add Project</h3>
         <input id="projectName" placeholder="Project Name">
         <select id="priority">
-            <option>P1</option><option>P2</option><option>P3</option>
+            <option>P1</option><option>P2</option><option>P3</option><option>P4</option><option>P5</option><option>P6</option><option>P7</option><option>P8</option><option>P9</option><option>P10</option>
         </select>
+        <input type="number" id="projectCompletion" placeholder="Completion %" min="0" max="100" value="0" style="max-width:5rem">
+        <input id="projectItpm" placeholder="ITPM Name">
+        <input id="projectBa" placeholder="BA Name">
+        <input type="date" id="projectRelease" placeholder="Release Date">
         <input type="color" id="projectColor" value="#0984e3">
         <button onclick="addProject()">Add</button>
     </div>
@@ -737,11 +741,21 @@ let currentEdit = null; // { type, id }
 function normalizeState(input){
     const s = (input && typeof input === "object") ? input : {};
     const testers = Array.isArray(s.testers) ? s.testers : [];
-    const projects = Array.isArray(s.projects) ? s.projects : [];
+    let projects = Array.isArray(s.projects) ? s.projects : [];
     const allocations = Array.isArray(s.allocations) ? s.allocations : [];
     const leaves = Array.isArray(s.leaves) ? s.leaves : [];
 
     const maxId = (arr)=>arr.reduce((m, x)=>Math.max(m, Number(x && x.id) || 0), 0);
+
+    // Ensure each project has completionPercent, itpmName, baName, releaseDate, priorityOrder
+    projects = projects.map((p, i) => ({
+        ...p,
+        completionPercent: typeof p.completionPercent === "number" ? p.completionPercent : 0,
+        itpmName: p.itpmName != null ? String(p.itpmName) : "",
+        baName: p.baName != null ? String(p.baName) : "",
+        releaseDate: p.releaseDate != null ? String(p.releaseDate) : "",
+        priorityOrder: typeof p.priorityOrder === "number" ? p.priorityOrder : (p.id != null ? Number(p.id) : i)
+    }));
 
     return {
         version: Number(s.version) || DATA_VERSION,
@@ -789,6 +803,24 @@ function getAll(store){
     });
 }
 
+function escapeHtml(str) {
+    if (str == null) return "";
+    const s = String(str);
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// Projects in display order: incomplete first by priorityOrder, then 100% at bottom
+function projectsInDisplayOrder(projects){
+    return [...projects].sort((a, b) => {
+        const aDone = (a.completionPercent != null ? a.completionPercent : 0) >= 100;
+        const bDone = (b.completionPercent != null ? b.completionPercent : 0) >= 100;
+        if (aDone !== bDone) return aDone ? 1 : -1;
+        const orderA = a.priorityOrder != null ? a.priorityOrder : (a.id != null ? a.id : 0);
+        const orderB = b.priorityOrder != null ? b.priorityOrder : (b.id != null ? b.id : 0);
+        return orderA - orderB || (a.id || 0) - (b.id || 0);
+    });
+}
+
 function downloadTextFile(filename, text, mime="application/json"){
     const blob = new Blob([text], { type: mime });
     const url = URL.createObjectURL(blob);
@@ -810,7 +842,7 @@ function exportToJson(){
     ]).then(([testers, projects, allocations, leaves])=>{
         const normalized = normalizeState({ testers, projects, allocations, leaves });
         const payload = JSON.stringify(normalized, null, 2);
-        downloadTextFile("EnterpriseResourcePlannerData.json", payload);
+        downloadTextFile("ResourcePlannerData.json", payload);
     });
 }
 
@@ -1000,7 +1032,7 @@ async function refreshDropdowns(){
     });
 
     allocProject.innerHTML="";
-    projects.forEach(p=>{
+    projectsInDisplayOrder(projects).forEach(p=>{
         allocProject.innerHTML+=`<option value="${p.id}">${p.name} (${p.priority})</option>`;
     });
 
@@ -1017,13 +1049,27 @@ async function refreshDropdowns(){
         </tr>`;
     });
 
-    // Project table
-    const projectTable=document.getElementById("projectTable");
-    projectTable.innerHTML="<tr><th>Name</th><th>Priority</th><th>Actions</th></tr>";
-    projects.forEach(p=>{
-        projectTable.innerHTML+=`<tr>
-            <td>${p.name}</td>
-            <td>${p.priority}</td>
+    // Project table (ordered: incomplete first by priority, then 100% at bottom)
+    const projectTable = document.getElementById("projectTable");
+    const projectsOrdered = projectsInDisplayOrder(projects);
+    projectTable.innerHTML = "<tr><th>Name</th><th>Priority</th><th>Completion %</th><th>ITPM</th><th>BA</th><th>Release Date</th><th>Order</th><th>Actions</th></tr>";
+    projectsOrdered.forEach((p, idx) => {
+        const comp = p.completionPercent != null ? p.completionPercent : 0;
+        const release = p.releaseDate ? p.releaseDate : "—";
+        const canMoveUp = idx > 0;
+        const canMoveDown = idx < projectsOrdered.length - 1;
+        const priorityDisplay = comp >= 100 ? "NA" : (p.priority || "");
+        projectTable.innerHTML += `<tr>
+            <td>${escapeHtml(p.name)}</td>
+            <td>${escapeHtml(priorityDisplay)}</td>
+            <td>${comp}%</td>
+            <td>${escapeHtml(p.itpmName || "—")}</td>
+            <td>${escapeHtml(p.baName || "—")}</td>
+            <td>${release}</td>
+            <td>
+                <button onclick="moveProjectUp(${p.id})" ${canMoveUp ? "" : "disabled"} title="Move up">↑</button>
+                <button onclick="moveProjectDown(${p.id})" ${canMoveDown ? "" : "disabled"} title="Move down">↓</button>
+            </td>
             <td>
                 <button onclick="editProject(${p.id})">Edit</button>
                 <button onclick="deleteProject(${p.id})">Delete</button>
@@ -1031,25 +1077,27 @@ async function refreshDropdowns(){
         </tr>`;
     });
 
-    // Allocation table
+    // Allocation table: grouped by project, ordered by project priority
     const allocationTable = document.getElementById("allocationTable");
-    allocationTable.innerHTML = "<tr><th>Tester</th><th>Project</th><th>Start</th><th>End</th><th>%</th><th>Actions</th></tr>";
-    allocations.forEach(a => {
-        const tester = testers.find(t => t.id === a.testerId);
-        const project = projects.find(p => p.id === a.projectId);
-        const testerName = tester ? tester.name : "";
-        const projectName = project ? project.name : "";
-        allocationTable.innerHTML += `<tr>
-            <td>${testerName}</td>
-            <td>${projectName}</td>
-            <td>${a.start}</td>
-            <td>${a.end}</td>
-            <td>${a.percent}</td>
-            <td>
-                <button onclick="editAllocation(${a.id})">Edit</button>
-                <button onclick="deleteAllocation(${a.id})">Delete</button>
-            </td>
-        </tr>`;
+    const projectsOrderedForAlloc = projectsInDisplayOrder(projects);
+    allocationTable.innerHTML = "<tr><th>Project</th><th>Tester</th><th>Start</th><th>End</th><th>Allocation %</th><th>Actions</th></tr>";
+    projectsOrderedForAlloc.forEach(proj => {
+        const projectAllocs = allocations.filter(a => a.projectId === proj.id);
+        projectAllocs.forEach(a => {
+            const tester = testers.find(t => t.id === a.testerId);
+            const testerName = tester ? tester.name : "";
+            allocationTable.innerHTML += `<tr>
+                <td>${escapeHtml(proj.name)}</td>
+                <td>${escapeHtml(testerName)}</td>
+                <td>${a.start}</td>
+                <td>${a.end}</td>
+                <td>${a.percent}</td>
+                <td>
+                    <button onclick="editAllocation(${a.id})">Edit</button>
+                    <button onclick="deleteAllocation(${a.id})">Delete</button>
+                </td>
+            </tr>`;
+        });
     });
 
     // Leave table
@@ -1095,6 +1143,42 @@ async function deleteProject(id){
     tx.oncomplete = ()=>{ refreshAll(); };
 }
 
+async function moveProjectUp(id) {
+    const projects = await getAll("projects");
+    const ordered = projectsInDisplayOrder(projects);
+    const idx = ordered.findIndex(p => p.id === id);
+    if (idx <= 0) return;
+    const prev = ordered[idx - 1];
+    const curr = ordered[idx];
+    const orderCurr = curr.priorityOrder != null ? curr.priorityOrder : curr.id;
+    const orderPrev = prev.priorityOrder != null ? prev.priorityOrder : prev.id;
+    curr.priorityOrder = orderPrev;
+    prev.priorityOrder = orderCurr;
+    const tx = db.transaction("projects", "readwrite");
+    const store = tx.objectStore("projects");
+    store.put(curr);
+    store.put(prev);
+    tx.oncomplete = () => refreshAll();
+}
+
+async function moveProjectDown(id) {
+    const projects = await getAll("projects");
+    const ordered = projectsInDisplayOrder(projects);
+    const idx = ordered.findIndex(p => p.id === id);
+    if (idx < 0 || idx >= ordered.length - 1) return;
+    const next = ordered[idx + 1];
+    const curr = ordered[idx];
+    const orderCurr = curr.priorityOrder != null ? curr.priorityOrder : curr.id;
+    const orderNext = next.priorityOrder != null ? next.priorityOrder : next.id;
+    curr.priorityOrder = orderNext;
+    next.priorityOrder = orderCurr;
+    const tx = db.transaction("projects", "readwrite");
+    const store = tx.objectStore("projects");
+    store.put(curr);
+    store.put(next);
+    tx.oncomplete = () => refreshAll();
+}
+
 function deleteAllocation(id){
     if(!confirm("Delete this allocation?")) return;
     const tx = db.transaction("allocations","readwrite");
@@ -1127,10 +1211,11 @@ async function editProject(id){
     const project = projects.find(p => p.id === id);
     if(!project) return;
     currentEdit = { type:"project", id };
+    const comp = project.completionPercent != null ? project.completionPercent : 0;
     const bodyHtml = `
         <label>
             Name<br>
-            <input id="editProjectName" value="${project.name || ""}">
+            <input id="editProjectName" value="${(project.name || "").replace(/"/g, "&quot;")}">
         </label><br>
         <label>
             Priority<br>
@@ -1138,7 +1223,30 @@ async function editProject(id){
                 <option value="P1"${project.priority==="P1"?" selected":""}>P1</option>
                 <option value="P2"${project.priority==="P2"?" selected":""}>P2</option>
                 <option value="P3"${project.priority==="P3"?" selected":""}>P3</option>
+                <option value="P4"${project.priority==="P4"?" selected":""}>P4</option>
+                <option value="P5"${project.priority==="P5"?" selected":""}>P5</option>
+                <option value="P6"${project.priority==="P6"?" selected":""}>P6</option>
+                <option value="P7"${project.priority==="P7"?" selected":""}>P7</option>
+                <option value="P8"${project.priority==="P8"?" selected":""}>P8</option>
+                <option value="P9"${project.priority==="P9"?" selected":""}>P9</option>
+                <option value="P10"${project.priority==="P10"?" selected":""}>P10</option>
             </select>
+        </label><br>
+        <label>
+            Completion %<br>
+            <input type="number" id="editProjectCompletion" min="0" max="100" value="${comp}">
+        </label><br>
+        <label>
+            ITPM Name<br>
+            <input id="editProjectItpm" value="${(project.itpmName || "").replace(/"/g, "&quot;")}">
+        </label><br>
+        <label>
+            BA Name<br>
+            <input id="editProjectBa" value="${(project.baName || "").replace(/"/g, "&quot;")}">
+        </label><br>
+        <label>
+            Release Date<br>
+            <input type="date" id="editProjectRelease" value="${project.releaseDate || ""}">
         </label><br>
         <label>
             Color<br>
@@ -1228,15 +1336,30 @@ function saveEdit(){
         const name = document.getElementById("editProjectName").value.trim();
         const priority = document.getElementById("editProjectPriority").value;
         const color = document.getElementById("editProjectColor").value || "#0984e3";
+        const completionPercent = Math.min(100, Math.max(0, Number(document.getElementById("editProjectCompletion").value) || 0));
+        const itpmName = document.getElementById("editProjectItpm") ? document.getElementById("editProjectItpm").value.trim() : "";
+        const baName = document.getElementById("editProjectBa") ? document.getElementById("editProjectBa").value.trim() : "";
+        const releaseDate = document.getElementById("editProjectRelease") ? document.getElementById("editProjectRelease").value : "";
         if(!name) return alert("Project name cannot be empty.");
         const tx = db.transaction("projects","readwrite");
-        tx.objectStore("projects").put({
-            id: currentEdit.id,
-            name,
-            priority,
-            color
-        });
-        tx.oncomplete = ()=>{ closeEditModal(); refreshAll(); };
+        const store = tx.objectStore("projects");
+        const req = store.get(currentEdit.id);
+        req.onsuccess = () => {
+            const existing = req.result || {};
+            store.put({
+                id: currentEdit.id,
+                name,
+                priority,
+                color,
+                completionPercent,
+                itpmName,
+                baName,
+                releaseDate,
+                priorityOrder: existing.priorityOrder != null ? existing.priorityOrder : currentEdit.id
+            });
+        };
+        tx.oncomplete = () => { closeEditModal(); refreshAll(); };
+        return;
     } else if(currentEdit.type === "allocation"){
         const testerId = Number(document.getElementById("editAllocTester").value);
         const projectId = Number(document.getElementById("editAllocProject").value);
@@ -1286,17 +1409,30 @@ function addTester(){
       };
 }
 
-function addProject(){
-    const name=document.getElementById("projectName").value.trim();
-    const priority=document.getElementById("priority").value;
-    const color=document.getElementById("projectColor").value;
+async function addProject(){
+    const name = document.getElementById("projectName").value.trim();
+    const priority = document.getElementById("priority").value;
+    const color = document.getElementById("projectColor").value || "#0984e3";
+    const completionPercent = Math.min(100, Math.max(0, Number(document.getElementById("projectCompletion").value) || 0));
+    const itpmName = (document.getElementById("projectItpm") && document.getElementById("projectItpm").value) ? document.getElementById("projectItpm").value.trim() : "";
+    const baName = (document.getElementById("projectBa") && document.getElementById("projectBa").value) ? document.getElementById("projectBa").value.trim() : "";
+    const releaseDate = (document.getElementById("projectRelease") && document.getElementById("projectRelease").value) ? document.getElementById("projectRelease").value : "";
 
     if(!name) return alert("Enter project name");
+
+    const existing = await getAll("projects");
+    const maxOrder = existing.length ? Math.max(...existing.map(p => p.priorityOrder != null ? p.priorityOrder : p.id)) : 0;
+    const priorityOrder = maxOrder + 1;
+
     const tx = db.transaction("projects","readwrite");
     tx.objectStore("projects")
-      .add({ name, priority, color })
+      .add({ name, priority, color, completionPercent, itpmName, baName, releaseDate, priorityOrder })
       .onsuccess=()=>{
           document.getElementById("projectName").value="";
+          if(document.getElementById("projectCompletion")) document.getElementById("projectCompletion").value = "0";
+          if(document.getElementById("projectItpm")) document.getElementById("projectItpm").value = "";
+          if(document.getElementById("projectBa")) document.getElementById("projectBa").value = "";
+          if(document.getElementById("projectRelease")) document.getElementById("projectRelease").value = "";
           refreshAll();
       };
 }
@@ -1546,7 +1682,18 @@ async function renderGantt(){
                         const leftPercent = ((effStart - wkStartTime) / dayMs / weekSpanMs) * 100;
                         const numDays = (effEnd - effStart) / dayMs + 1;
                         const widthPercent = (numDays / weekSpanMs) * 100;
-                        const title = proj.name + ": " + formatDateForTooltip(a.start) + " — " + formatDateForTooltip(a.end);
+                        const comp = proj.completionPercent != null ? proj.completionPercent : 0;
+                        const release = proj.releaseDate ? formatDateForTooltip(proj.releaseDate) : "—";
+                        const lines = [
+                            proj.name,
+                            "Allocation: " + a.percent + "%",
+                            "Completion: " + comp + "%",
+                            "ITPM: " + (proj.itpmName || "—"),
+                            "BA: " + (proj.baName || "—"),
+                            "Release: " + release,
+                            formatDateForTooltip(a.start) + " — " + formatDateForTooltip(a.end)
+                        ];
+                        const title = lines.join("\n");
                         const box = document.createElement("div");
                         box.className = "project-box";
                         box.setAttribute("data-start", a.start);

@@ -1,7 +1,7 @@
 {
-  "name": "Enterprise Resource Planner",
+  "name": "Resource Planner",
   "short_name": "Resource Planner",
-  "description": "Plan and manage enterprise resources, projects, and allocations",
+  "description": "Plan and manage resources, projects, and allocations",
   "start_url": "./ResourcePlanner",
   "scope": "./",
   "display": "standalone",
