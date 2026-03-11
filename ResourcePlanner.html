@@ -1479,14 +1479,30 @@ async function renderGantt(){
     const startOfYear=new Date(YEAR,0,1);
     const endOfYear = new Date(YEAR,11,31);
 
-    // Precompute all weeks for consistent use (header + rows)
-    const weeks = [];
-    let wIndex = 0;
-    while (true) {
-        const weekStart = new Date(startOfYear);
-        weekStart.setDate(startOfYear.getDate() + wIndex*7);
-        if (weekStart > endOfYear) break;
+    // Monday of the week containing d (ISO weeks start on Monday)
+    function getMonday(d) {
+        const x = new Date(d);
+        x.setHours(0, 0, 0, 0);
+        x.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+        return x;
+    }
+    // ISO 8601 week number (1–53) for the week containing d
+    function getISOWeekNumber(d) {
+        const mon = getMonday(new Date(d));
+        const thursday = new Date(mon);
+        thursday.setDate(mon.getDate() + 3);
+        const y = thursday.getFullYear();
+        const jan4 = new Date(y, 0, 4);
+        const mon1 = getMonday(jan4);
+        return 1 + Math.floor((mon.getTime() - mon1.getTime()) / (7 * 86400000));
+    }
 
+    // Precompute all weeks (Monday–Sunday, ISO calendar weeks) that overlap the year
+    const weeks = [];
+    let weekStart = getMonday(startOfYear);
+    const lastMonday = getMonday(endOfYear);
+    let wIndex = 0;
+    while (weekStart.getTime() <= lastMonday.getTime()) {
         const weekEnd = new Date(weekStart);
         weekEnd.setDate(weekStart.getDate() + 6);
         if (weekEnd > endOfYear) weekEnd.setTime(endOfYear.getTime());
@@ -1494,7 +1510,9 @@ async function renderGantt(){
         // Build list of day numbers (dd) for the week
         const days=[];
         const dayCursor = new Date(weekStart);
-        while (dayCursor <= weekEnd) {
+        const effectiveEnd = new Date(weekStart);
+        effectiveEnd.setDate(weekStart.getDate() + 6);
+        while (dayCursor <= effectiveEnd) {
             const dd = String(dayCursor.getDate()).padStart(2,"0");
             days.push(dd);
             dayCursor.setDate(dayCursor.getDate()+1);
@@ -1506,8 +1524,10 @@ async function renderGantt(){
         if (midDate > endOfYear) midDate.setTime(endOfYear.getTime());
         const monthLabel = midDate.toLocaleString(undefined, { month: "short" });
 
-        weeks.push({ index: wIndex, weekStart, weekEnd, days, monthLabel });
+        const isoWeekNum = getISOWeekNumber(weekStart);
+        weeks.push({ index: wIndex, isoWeekNum, weekStart: new Date(weekStart), weekEnd, days, monthLabel });
         wIndex++;
+        weekStart.setDate(weekStart.getDate() + 7);
     }
 
     // Build months list for month row (colspans)
@@ -1573,7 +1593,7 @@ async function renderGantt(){
         const th = document.createElement("th");
         th.className = "week-header-cell";
         th.innerHTML = `
-            <span class="week-week">W${wk.index + 1}</span>
+            <span class="week-week">W${wk.isoWeekNum}</span>
             <span class="week-days">${wk.days.join(" ")}</span>
         `;
         weekRow.appendChild(th);
@@ -1640,10 +1660,10 @@ async function renderGantt(){
             cell.className = "week-cell";
             cell.style.height = rowHeight + "px";
             cell.style.minHeight = rowHeight + "px";
-            let total = 0;
             const wkStartTime = toDayTime(wk.weekStart);
             const wkEndTime = toDayTime(wk.weekEnd);
             const weekSpanMs = (wkEndTime - wkStartTime) / dayMs + 1;
+            const allocsInWeek = [];
 
             testerLeaves.forEach(l => {
                 const lStartTime = toDayTime(l.start);
@@ -1673,7 +1693,7 @@ async function renderGantt(){
                 const aStartTime = toDayTime(a.start);
                 const aEndTime = toDayTime(a.end);
                 if (aStartTime <= wkEndTime && aEndTime >= wkStartTime) {
-                    total += a.percent;
+                    allocsInWeek.push({ start: aStartTime, end: aEndTime, percent: a.percent });
                     const proj = projects.find(p => p.id === a.projectId);
                     if (proj) {
                         const lane = keyToLane.get("a-" + a.id) ?? 0;
@@ -1709,7 +1729,15 @@ async function renderGantt(){
                 }
             });
 
-            if (total > 100) cell.classList.add("over");
+            // Over only when overlapping dates in this week sum to > 100%
+            let maxDayTotal = 0;
+            for (let t = wkStartTime; t <= wkEndTime; t += dayMs) {
+                const dayTotal = allocsInWeek
+                    .filter(a => t >= a.start && t <= a.end)
+                    .reduce((sum, a) => sum + a.percent, 0);
+                if (dayTotal > maxDayTotal) maxDayTotal = dayTotal;
+            }
+            if (maxDayTotal > 100) cell.classList.add("over");
             row.appendChild(cell);
         });
 
